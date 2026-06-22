@@ -1,0 +1,220 @@
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-4xl: calc(var(--radius) + 16px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-violet: var(--violet);
+  --color-mint: var(--mint);
+  --color-pink: var(--pink);
+  --color-coral: var(--coral);
+  --color-amber: var(--amber);
+  --color-sky: var(--sky);
+  --font-display: "Space Grotesk", system-ui, sans-serif;
+  --font-body: "Inter", system-ui, sans-serif;
+}
+
+:root {
+  --radius: 1.25rem;
+  --background: oklch(0.62 0.20 320);
+  --foreground: oklch(0.98 0.01 280);
+  --card: oklch(0.55 0.18 300);
+  --card-foreground: oklch(0.98 0.01 280);
+  --popover: oklch(0.55 0.18 300);
+  --popover-foreground: oklch(0.98 0.01 280);
+  --primary: oklch(0.72 0.22 310);
+  --primary-foreground: oklch(0.16 0.06 290);
+  --secondary: oklch(0.65 0.18 200);
+  --secondary-foreground: oklch(0.98 0.01 280);
+  --muted: oklch(0.55 0.10 300);
+  --muted-foreground: oklch(0.95 0.02 290);
+  --accent: oklch(0.85 0.18 170);
+  --accent-foreground: oklch(0.16 0.06 290);
+  --destructive: oklch(0.65 0.24 25);
+  --destructive-foreground: oklch(0.98 0 0);
+  --border: oklch(1 0 0 / 25%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.85 0.18 170);
+
+  --violet: oklch(0.68 0.25 300);
+  --mint: oklch(0.85 0.18 170);
+  --pink: oklch(0.74 0.25 350);
+  --coral: oklch(0.76 0.20 30);
+  --amber: oklch(0.84 0.18 80);
+  --sky: oklch(0.78 0.15 230);
+
+  --gradient-aurora: linear-gradient(135deg, oklch(0.62 0.25 300), oklch(0.66 0.27 350), oklch(0.72 0.22 30));
+  --gradient-mint: linear-gradient(135deg, oklch(0.78 0.18 170), oklch(0.7 0.18 230));
+  --gradient-sunset: linear-gradient(135deg, oklch(0.7 0.25 350), oklch(0.78 0.20 60));
+  --gradient-night: linear-gradient(160deg, oklch(0.55 0.22 320) 0%, oklch(0.45 0.22 290) 50%, oklch(0.5 0.20 220) 100%);
+  --gradient-candy: linear-gradient(135deg, oklch(0.62 0.22 30) 0%, oklch(0.58 0.25 350) 30%, oklch(0.5 0.25 290) 65%, oklch(0.55 0.20 220) 100%);
+
+  --shadow-glow: 0 10px 40px -10px oklch(0.55 0.30 320 / 80%);
+  --shadow-mint: 0 10px 40px -10px oklch(0.78 0.18 170 / 70%);
+}
+
+@layer base {
+  * { border-color: var(--color-border); }
+  html, body { font-family: var(--font-body); }
+  body {
+    background: var(--gradient-candy);
+    background-attachment: fixed;
+    color: var(--color-foreground);
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+@utility bg-aurora { background-image: var(--gradient-aurora); }
+@utility bg-mint-grad { background-image: var(--gradient-mint); }
+@utility bg-sunset { background-image: var(--gradient-sunset); }
+@utility bg-night { background-image: var(--gradient-night); }
+@utility bg-candy { background-image: var(--gradient-candy); }
+@utility shadow-glow { box-shadow: var(--shadow-glow); }
+@utility shadow-mint { box-shadow: var(--shadow-mint); }
+@utility text-gradient {
+  background: var(--gradient-aurora);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+@utility scrollbar-hide {
+  &::-webkit-scrollbar { display: none; }
+  scrollbar-width: none;
+}
+
+@utility perspective-1200 { perspective: 1200px; }
+@utility preserve-3d { transform-style: preserve-3d; }
+@utility backface-hidden { backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+@utility glass {
+  background: color-mix(in oklab, white 14%, transparent);
+  backdrop-filter: blur(22px) saturate(160%);
+  border: 1px solid color-mix(in oklab, white 22%, transparent);
+}
+@utility glass-strong {
+  background: linear-gradient(140deg, color-mix(in oklab, white 30%, transparent), color-mix(in oklab, oklch(0.32 0.14 310) 55%, transparent));
+  backdrop-filter: blur(30px) saturate(180%);
+  border: 1px solid color-mix(in oklab, white 50%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in oklab, white 35%, transparent), 0 18px 50px -20px oklch(0 0 0 / 0.5);
+}
+
+.pulse-phone-dark {
+  --foreground: oklch(0.96 0.02 285);
+  --card: oklch(0.22 0.07 292);
+  --card-foreground: oklch(0.97 0.015 285);
+  --popover: oklch(0.19 0.07 292);
+  --popover-foreground: oklch(0.97 0.015 285);
+  --muted: oklch(0.27 0.06 288);
+  --muted-foreground: oklch(0.78 0.035 285);
+  --border: oklch(0.92 0.02 285 / 18%);
+  --input: oklch(0.25 0.07 292 / 82%);
+  --violet: oklch(0.72 0.19 302);
+  --mint: oklch(0.82 0.15 170);
+  --pink: oklch(0.73 0.19 350);
+  --coral: oklch(0.75 0.16 35);
+  --amber: oklch(0.82 0.15 85);
+  --sky: oklch(0.78 0.13 230);
+  --gradient-aurora: linear-gradient(135deg, oklch(0.36 0.16 302), oklch(0.28 0.14 265), oklch(0.39 0.13 20));
+  --gradient-mint: linear-gradient(135deg, oklch(0.34 0.12 170), oklch(0.27 0.12 230));
+  --gradient-sunset: linear-gradient(135deg, oklch(0.36 0.15 350), oklch(0.35 0.12 55));
+  --gradient-night: linear-gradient(160deg, oklch(0.17 0.08 300) 0%, oklch(0.12 0.07 275) 50%, oklch(0.14 0.06 230) 100%);
+  --shadow-glow: 0 16px 48px -18px oklch(0.72 0.20 300 / 58%);
+  --shadow-mint: 0 16px 48px -18px oklch(0.78 0.15 170 / 48%);
+  color: var(--foreground);
+}
+
+.pulse-phone-dark .glass {
+  background: linear-gradient(145deg, oklch(0.28 0.08 292 / 0.78), oklch(0.18 0.07 275 / 0.72));
+  border-color: oklch(0.96 0.02 285 / 0.18);
+  box-shadow: inset 0 1px 0 oklch(1 0 0 / 0.12), 0 16px 42px -24px oklch(0 0 0 / 0.8);
+}
+
+.pulse-phone-dark .glass-strong {
+  background: linear-gradient(145deg, oklch(0.28 0.08 292 / 0.92), oklch(0.16 0.07 270 / 0.92));
+  border-color: oklch(0.96 0.02 285 / 0.22);
+  box-shadow: inset 0 1px 0 oklch(1 0 0 / 0.14), 0 24px 60px -28px oklch(0 0 0 / 0.9);
+}
+
+.pulse-phone-dark [class*="bg-white/"] {
+  background-color: oklch(0.28 0.07 288 / 0.72) !important;
+}
+
+.pulse-phone-dark [class*="border-white/"] {
+  border-color: oklch(0.96 0.02 285 / 0.20) !important;
+}
+
+.pulse-phone-dark input,
+.pulse-phone-dark textarea,
+.pulse-phone-dark select {
+  background-color: oklch(0.21 0.07 288 / 0.9) !important;
+  border-color: oklch(0.88 0.035 285 / 0.30) !important;
+  color: oklch(0.98 0.01 285) !important;
+}
+
+.pulse-phone-dark input::placeholder,
+.pulse-phone-dark textarea::placeholder {
+  color: oklch(0.82 0.03 285 / 0.82) !important;
+}
+
+.pulse-phone-dark .bg-white {
+  background-color: oklch(0.92 0.035 285) !important;
+}
+
+.pulse-phone-dark .bg-black {
+  background-color: oklch(0.12 0.04 285) !important;
+}
+
+@keyframes float-blob {
+  0%, 100% { transform: translate(0,0) scale(1); }
+  33% { transform: translate(20px,-30px) scale(1.1); }
+  66% { transform: translate(-15px,20px) scale(0.95); }
+}
+@utility animate-blob { animation: float-blob 12s ease-in-out infinite; }
+
+@keyframes pulse-ring {
+  0% { transform: scale(0.8); opacity: 0.8; }
+  100% { transform: scale(2); opacity: 0; }
+}
+@utility animate-pulse-ring { animation: pulse-ring 2s ease-out infinite; }
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+@utility animate-shimmer { animation: shimmer 3s linear infinite; }
+
+/* Hide native password reveal icons (Edge/IE/Chrome) — we render our own eye */
+input[type="password"]::-ms-reveal,
+input[type="password"]::-ms-clear { display: none; }
+input[type="password"]::-webkit-credentials-auto-fill-button,
+input[type="password"]::-webkit-contacts-auto-fill-button {
+  visibility: hidden; display: none !important;
+  pointer-events: none; position: absolute; right: 0;
+}
