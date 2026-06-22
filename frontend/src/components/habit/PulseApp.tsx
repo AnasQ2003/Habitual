@@ -1,4 +1,5 @@
-import { useState, useMemo, useEffect, createContext, useContext, type ReactNode } from "react";
+import { useState, useMemo, useEffect, useRef, createContext, useContext, type ReactNode } from "react";
+import api, { type User, type Habit, type Reminder, type AppNotification, type FeedPost } from "@/lib/api-client";
 
 type ThemeId = "candy" | "aurora" | "ocean" | "sunset";
 const THEME_GRADS: Record<ThemeId, string> = {
@@ -18,7 +19,7 @@ const useTheme = () => useContext(ThemeCtx);
 import { motion, AnimatePresence, type Variants } from "framer-motion";
 import {
   Sparkles, Mail, Lock, Eye, EyeOff, ArrowRight, Check, ShieldCheck, FileText,
-  Home, BarChart3, Calendar, Trophy, User, Plus, Bell, Menu, Search,
+  Home, BarChart3, Calendar, Trophy, User as UserIcon, Plus, Bell, Menu, Search,
   Flame, Droplets, BookOpen, Dumbbell, Brain, Moon as MoonIcon, Heart, Music,
   Settings, LogOut, HelpCircle, Star, ChevronRight, ChevronDown, Edit3, Camera, X,
   TrendingUp, Target, Users, Zap, Award, Globe, Palette, Volume2,
@@ -69,7 +70,7 @@ const navTabs: { id: Screen; label: string; icon: typeof Home }[] = [
   { id: "stats", label: "Stats", icon: BarChart3 },
   { id: "add", label: "Add", icon: Plus },
   { id: "calendar", label: "Calendar", icon: Calendar },
-  { id: "profile", label: "Profile", icon: User },
+  { id: "profile", label: "Profile", icon: UserIcon },
 ];
 
 const screenVariants: Variants = {
@@ -119,11 +120,19 @@ function PhoneFrame({ children }: { children: ReactNode }) {
 }
 
 /* ---------------- SPLASH ---------------- */
-function Splash({ go }: { go: (s: Screen) => void }) {
+function Splash({ go, onUser }: { go: (s: Screen) => void; onUser: (u: User) => void }) {
   useEffect(() => {
-    const t = setTimeout(() => go("auth"), 2400);
+    const t = setTimeout(() => {
+      const stored = api.auth.getStoredUser();
+      if (stored && api.auth.isLoggedIn()) {
+        onUser(stored);
+        go("home");
+      } else {
+        go("auth");
+      }
+    }, 2400);
     return () => clearTimeout(t);
-  }, [go]);
+  }, [go, onUser]);
   return (
     <motion.div key="splash" {...screenVariants} className="relative flex h-full flex-col items-center justify-center px-8">
       <div className="absolute inset-0 bg-candy" />
@@ -200,14 +209,43 @@ const AppleLogo = () => (
   <svg viewBox="0 0 24 24" className="h-5 w-5" fill="white"><path d="M16.365 1.43c0 1.14-.42 2.19-1.13 2.99-.83.93-2.18 1.65-3.27 1.57-.14-1.11.39-2.27 1.12-3.05.82-.89 2.24-1.56 3.28-1.51zM20.5 17.6c-.55 1.27-.82 1.84-1.53 2.97-.99 1.57-2.39 3.53-4.12 3.55-1.54.01-1.94-1.01-4.03-1-2.09.01-2.53 1.02-4.07 1-1.74-.02-3.07-1.79-4.06-3.36C.91 17.36.49 12.4 2.16 9.78c1.18-1.86 3.05-2.95 4.81-2.95 1.79 0 2.92 1 4.4 1 1.44 0 2.32-1 4.39-1 1.57 0 3.23.86 4.41 2.34-3.88 2.13-3.24 7.71.33 8.43z"/></svg>
 );
 
-function BookAuth({ go }: { go: (s: Screen) => void }) {
+function BookAuth({ go, onUser }: { go: (s: Screen) => void; onUser: (u: User) => void }) {
   const [page, setPage] = useState<"login" | "signup">("login");
   const [show, setShow] = useState(false);
   const [showSignup, setShowSignup] = useState(false);
   const [agree, setAgree] = useState(false);
   const [agreeLogin, setAgreeLogin] = useState(true);
   const [forgot, setForgot] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [authErr, setAuthErr] = useState("");
   const isLogin = page === "login";
+  // controlled inputs
+  const loginEmail = useRef(""); const loginPw = useRef("");
+  const signName = useRef(""); const signEmail = useRef(""); const signPw = useRef("");
+
+  const handleLogin = async () => {
+    if (!agreeLogin) return;
+    setLoading(true); setAuthErr("");
+    try {
+      const { token, user } = await api.auth.login(loginEmail.current, loginPw.current);
+      api.auth.saveToken(token, user);
+      onUser(user);
+      go("home");
+    } catch (e: any) { setAuthErr(e.message ?? "Login failed"); }
+    finally { setLoading(false); }
+  };
+
+  const handleSignup = async () => {
+    if (!agree) return;
+    setLoading(true); setAuthErr("");
+    try {
+      const { token, user } = await api.auth.signup(signName.current, signEmail.current, signPw.current);
+      api.auth.saveToken(token, user);
+      onUser(user);
+      go("home");
+    } catch (e: any) { setAuthErr(e.message ?? "Signup failed"); }
+    finally { setLoading(false); }
+  };
   return (
     <motion.div key="auth" {...screenVariants} className="relative flex h-full flex-col justify-center px-5 py-5">
       <Blobs />
@@ -240,17 +278,17 @@ function BookAuth({ go }: { go: (s: Screen) => void }) {
 
 
             <div className="mt-4 space-y-3">
-              <BookField icon={Mail} type="email" placeholder="you@email.com" autoComplete="email" />
+              <BookField icon={Mail} type="email" placeholder="you@email.com" autoComplete="email" onChange={e => { loginEmail.current = e.target.value; }} />
               <div className="relative">
-                <BookField icon={Lock} type={show ? "text" : "password"} placeholder="Password" autoComplete="current-password" />
+                <BookField icon={Lock} type={show ? "text" : "password"} placeholder="Password" autoComplete="current-password" onChange={e => { loginPw.current = e.target.value; }} />
                 <button type="button" onClick={() => setShow(!show)} className="absolute right-3 top-1/2 z-10 -translate-y-1/2 text-white/80">
                   {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
               <button onClick={() => setForgot(true)} className="ml-auto block text-[12px] font-semibold text-white/90 hover:underline">Forgot password?</button>
             </div>
-
-            <button onClick={() => agreeLogin && go("home")} disabled={!agreeLogin} className="mt-4 w-full rounded-2xl bg-white py-3 text-base font-semibold text-[oklch(0.35_0.18_320)] shadow-glow active:scale-[0.98] transition disabled:opacity-50">Log in</button>
+            {authErr && !isLogin === false && <p className="mt-2 text-[11px] text-pink">{authErr}</p>}
+            <button onClick={handleLogin} disabled={!agreeLogin || loading} className="mt-4 w-full rounded-2xl bg-white py-3 text-base font-semibold text-[oklch(0.35_0.18_320)] shadow-glow active:scale-[0.98] transition disabled:opacity-50">{loading ? "Signing in…" : "Log in"}</button>
 
             <div className="my-3.5 flex items-center gap-2 text-[10px] uppercase tracking-wider text-white/70">
               <div className="h-px flex-1 bg-white/25" /> or continue with <div className="h-px flex-1 bg-white/25" />
@@ -277,10 +315,10 @@ function BookAuth({ go }: { go: (s: Screen) => void }) {
             <p className="mt-1 text-[13px] text-white/85">Start your habit journey today</p>
 
             <div className="mt-4 space-y-3">
-              <BookField icon={User} placeholder="Full name" />
-              <BookField icon={Mail} type="email" placeholder="you@email.com" autoComplete="email" />
+              <BookField icon={UserIcon} placeholder="Full name" onChange={e => { signName.current = e.target.value; }} />
+              <BookField icon={Mail} type="email" placeholder="you@email.com" autoComplete="email" onChange={e => { signEmail.current = e.target.value; }} />
               <div className="relative">
-                <BookField icon={Lock} type={showSignup ? "text" : "password"} placeholder="Password" autoComplete="new-password" />
+                <BookField icon={Lock} type={showSignup ? "text" : "password"} placeholder="Password" autoComplete="new-password" onChange={e => { signPw.current = e.target.value; }} />
                 <button type="button" onClick={() => setShowSignup(!showSignup)} className="absolute right-3 top-1/2 z-10 -translate-y-1/2 text-white/80">
                   {showSignup ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
@@ -293,8 +331,8 @@ function BookAuth({ go }: { go: (s: Screen) => void }) {
               </span>
               <span className="text-[12px] text-white/85">I agree to the <button type="button" onClick={(e) => { e.stopPropagation(); go("terms"); }} className="font-bold text-white underline">Terms & Privacy</button></span>
             </button>
-
-            <button onClick={() => go("home")} disabled={!agree} className="mt-3.5 w-full rounded-2xl bg-white py-3 text-base font-semibold text-[oklch(0.35_0.18_320)] shadow-glow transition active:scale-[0.98] disabled:opacity-40">Create account</button>
+            {authErr && <p className="mt-2 text-[11px] text-pink">{authErr}</p>}
+            <button onClick={handleSignup} disabled={!agree || loading} className="mt-3.5 w-full rounded-2xl bg-white py-3 text-base font-semibold text-[oklch(0.35_0.18_320)] shadow-glow transition active:scale-[0.98] disabled:opacity-40">{loading ? "Creating…" : "Create account"}</button>
 
             <div className="my-3.5 flex items-center gap-2 text-[10px] uppercase tracking-wider text-white/70">
               <div className="h-px flex-1 bg-white/25" /> or sign up with <div className="h-px flex-1 bg-white/25" />
@@ -422,7 +460,7 @@ function Signup({ go }: { go: (s: Screen) => void }) {
   return (
     <AuthShell title="Create account" subtitle="Start your habit journey today" onBack={() => go("auth")}>
       <div className="space-y-4">
-        <Field icon={User} placeholder="Full name" />
+        <Field icon={UserIcon} placeholder="Full name" />
         <Field icon={Mail} type="email" placeholder="you@email.com" />
         <Field icon={Lock} type="password" placeholder="Password" />
       </div>
@@ -466,7 +504,7 @@ function Terms({ go }: { go: (s: Screen) => void }) {
             { icon: ShieldCheck, t: "How it's protected", b: "Everything is encrypted in transit (TLS 1.3) and at rest (AES-256). Passwords are hashed with bcrypt. Backups are encrypted and rotated every 30 days across redundant regions." },
             { icon: Sparkles, t: "Anonymous analytics", b: "We measure aggregate usage (screens visited, crash reports) to improve the app. Events are stripped of identifiers and we never link them back to your account. Opt out anytime in Settings → Privacy." },
             { icon: Bell, t: "Notifications & reminders", b: "Habit reminders are scheduled locally on your device — they never leave your phone. Push notifications for streak milestones use anonymous device tokens you can revoke at any time." },
-            { icon: User, t: "Your account, your control", b: "Export every byte we store as a JSON file, edit any field, or permanently delete your account from Profile → Settings → Account. Deletion is irreversible and completes within 24 hours across all backups." },
+            { icon: UserIcon, t: "Your account, your control", b: "Export every byte we store as a JSON file, edit any field, or permanently delete your account from Profile → Settings → Account. Deletion is irreversible and completes within 24 hours across all backups." },
             { icon: Globe, t: "Third parties", b: "We use trusted infrastructure (hosting, crash reporting, email delivery) under strict data-processing agreements. We do not sell, rent, or share your personal data with advertisers — ever." },
             { icon: BookOpen, t: "Children's privacy", b: "Pulse is intended for users aged 13 and older. We do not knowingly collect data from children under 13. If you believe a child has signed up, contact privacy@pulse.app and we'll remove the account immediately." },
             { icon: Heart, t: "Your rights (GDPR & CCPA)", b: "You have the right to access, rectify, port, restrict, or erase your data. We respond to all verified requests within 30 days. Reach our Data Protection Officer at dpo@pulse.app." },
@@ -723,34 +761,59 @@ function Drawer({ open, close, go, logout }: { open: boolean; close: () => void;
   );
 }
 
-/* ---------------- HABITS DATA ---------------- */
-const HABITS = [
-  { id: "water", name: "Drink water", icon: Droplets, color: "from-sky-400 to-cyan-300", done: 6, goal: 8, unit: "glasses", streak: 12 },
-  { id: "read", name: "Read 20 pages", icon: BookOpen, color: "from-amber-400 to-orange-400", done: 15, goal: 20, unit: "pages", streak: 8 },
-  { id: "workout", name: "Workout", icon: Dumbbell, color: "from-pink-500 to-rose-400", done: 1, goal: 1, unit: "session", streak: 21 },
-  { id: "meditate", name: "Meditate", icon: Brain, color: "from-violet-500 to-fuchsia-400", done: 0, goal: 1, unit: "session", streak: 5 },
-  { id: "sleep", name: "Sleep by 11", icon: MoonIcon, color: "from-indigo-500 to-blue-400", done: 0, goal: 1, unit: "night", streak: 3 },
-  { id: "gratitude", name: "Gratitude", icon: Heart, color: "from-rose-400 to-pink-300", done: 1, goal: 1, unit: "entry", streak: 14 },
+/* ---------------- HABITS DATA (icon resolver) ---------------- */
+const ICON_MAP: Record<string, typeof Droplets> = {
+  Droplets, BookOpen, Dumbbell, Brain, Moon: MoonIcon, Heart, Music, Bell,
+  Target, Star, Flame, Zap, Trophy, Award, Users, Globe,
+};
+function resolveIcon(name: string): typeof Droplets {
+  return ICON_MAP[name] ?? Droplets;
+}
+
+// Fallback static habits used when API is offline
+const STATIC_HABITS: Habit[] = [
+  { id: "water",     name: "Drink water",   icon: "Droplets", color: "from-sky-400 to-cyan-300",       done: 6,  goal: 8,  unit: "glasses", streak: 12, sort_order: 0 },
+  { id: "read",      name: "Read 20 pages", icon: "BookOpen", color: "from-amber-400 to-orange-400",   done: 15, goal: 20, unit: "pages",   streak: 8,  sort_order: 1 },
+  { id: "workout",   name: "Workout",       icon: "Dumbbell", color: "from-pink-500 to-rose-400",       done: 1,  goal: 1,  unit: "session", streak: 21, sort_order: 2 },
+  { id: "meditate",  name: "Meditate",      icon: "Brain",    color: "from-violet-500 to-fuchsia-400",  done: 0,  goal: 1,  unit: "session", streak: 5,  sort_order: 3 },
+  { id: "sleep",     name: "Sleep by 11",   icon: "Moon",     color: "from-indigo-500 to-blue-400",     done: 0,  goal: 1,  unit: "night",   streak: 3,  sort_order: 4 },
+  { id: "gratitude", name: "Gratitude",     icon: "Heart",    color: "from-rose-400 to-pink-300",       done: 1,  goal: 1,  unit: "entry",   streak: 14, sort_order: 5 },
 ];
 
-/* ---------------- HOME ---------------- */
-type Reminder = { id: number; title: string; time: string; days: string; icon: typeof Bell; c: string; on: boolean };
+/* Global reactive habits state shared across screens */
+let _habits: Habit[] = STATIC_HABITS;
+let _setHabitsGlobal: ((h: Habit[]) => void) | null = null;
+function useHabitsStore() {
+  const [habits, setHabits] = useState<Habit[]>(_habits);
+  useEffect(() => { _setHabitsGlobal = setHabits; return () => { _setHabitsGlobal = null; }; }, []);
+  const refresh = async () => {
+    try {
+      const data = await api.habits.list();
+      _habits = data;
+      setHabits(data);
+      _setHabitsGlobal?.(data);
+    } catch { /* offline — keep current */ }
+  };
+  return { habits, setHabits, refresh };
+}
 
-function Home_({ go }: { go: (s: Screen) => void }) {
-  const completed = HABITS.filter(h => h.done >= h.goal).length;
-  const pct = Math.round((completed / HABITS.length) * 100);
+/* ---------------- HOME ---------------- */
+function Home_({ go, user }: { go: (s: Screen) => void; user: User | null }) {
+  const { habits, refresh } = useHabitsStore();
+  const completed = habits.filter(h => h.done >= h.goal).length;
+  const pct = Math.round((completed / Math.max(habits.length, 1)) * 100);
   const [mood, setMood] = useState(2);
   const moods = ["😞","😐","🙂","😄","🤩"];
-  const [reminders, setReminders] = useState<Reminder[]>([
-    { id: 1, title: "Drink water", time: "10:00", days: "Mon–Sun", icon: Droplets, c: "from-sky-400 to-cyan-300", on: true },
-    { id: 2, title: "Meditate", time: "07:30", days: "Mon–Fri", icon: Brain, c: "from-violet-500 to-fuchsia-400", on: true },
-    { id: 3, title: "Read 20 pages", time: "21:00", days: "Daily", icon: BookOpen, c: "from-amber-400 to-orange-400", on: false },
-  ]);
+  const [reminders, setReminders] = useState<Reminder[]>([]);
   const [showRem, setShowRem] = useState(false);
   const [adding, setAdding] = useState(false);
   const [newTitle, setNewTitle] = useState("Evening walk");
   const [newTime, setNewTime] = useState("18:30");
   const [newDays, setNewDays] = useState("Daily");
+  useEffect(() => {
+    refresh();
+    api.reminders.list().then(setReminders).catch(() => {});
+  }, []);
 
   return (
     <motion.div variants={stagger} initial="initial" animate="animate" className="flex-1 overflow-y-auto scrollbar-hide px-5 pt-5 pb-4">
@@ -764,7 +827,7 @@ function Home_({ go }: { go: (s: Screen) => void }) {
           <div>
             <div className="text-sm font-medium text-white/80">Today's progress</div>
             <div className="mt-1 font-display text-4xl font-bold text-white">{pct}%</div>
-            <div className="mt-1 text-sm text-white/80">{completed} of {HABITS.length} habits</div>
+            <div className="mt-1 text-sm text-white/80">{completed} of {habits.length} habits</div>
           </div>
           <div className="relative h-24 w-24">
             <svg className="h-full w-full -rotate-90" viewBox="0 0 100 100">
@@ -822,16 +885,19 @@ function Home_({ go }: { go: (s: Screen) => void }) {
           <button onClick={() => setShowRem(true)} className="rounded-full bg-white/20 px-3 py-1 text-[10px] font-bold text-white">Manage</button>
         </div>
         <div className="mt-3 space-y-2">
-          {reminders.slice(0, 2).map(r => (
-            <div key={r.id} className="flex items-center gap-3 rounded-2xl bg-white/10 p-2.5">
-              <div className={`grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br ${r.c}`}><r.icon className="h-4 w-4 text-white" /></div>
-              <div className="min-w-0 flex-1">
-                <div className="truncate text-sm font-semibold text-white">{r.title}</div>
-                <div className="text-[10px] text-white/70">{r.time} · {r.days}</div>
+          {reminders.slice(0, 2).map(r => {
+            const RIcon = resolveIcon(r.icon);
+            return (
+              <div key={r.id} className="flex items-center gap-3 rounded-2xl bg-white/10 p-2.5">
+                <div className={`grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br ${r.color}`}><RIcon className="h-4.5 w-4.5 text-white" /></div>
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm font-semibold text-white">{r.title}</div>
+                  <div className="text-[10px] text-white/70">{r.reminder_time} · {r.days}</div>
+                </div>
+                <span className={`h-2 w-2 rounded-full ${r.is_on ? "bg-mint shadow-mint" : "bg-white/30"}`} />
               </div>
-              <span className={`h-2 w-2 rounded-full ${r.on ? "bg-mint shadow-mint" : "bg-white/30"}`} />
-            </div>
-          ))}
+            );
+          })}
         </div>
       </motion.div>
 
@@ -841,8 +907,8 @@ function Home_({ go }: { go: (s: Screen) => void }) {
       </motion.div>
 
       <motion.div variants={stagger} className="space-y-3">
-        {HABITS.slice(0, 4).map((h) => (
-          <HabitCard key={h.id} h={h} />
+        {habits.slice(0, 4).map((h) => (
+          <HabitCard key={h.id} h={h} onLog={refresh} />
         ))}
       </motion.div>
 
@@ -900,19 +966,22 @@ function Home_({ go }: { go: (s: Screen) => void }) {
       {/* Reminders Sheet */}
       <ModalSheet open={showRem} onClose={() => { setShowRem(false); setAdding(false); }} title="Your reminders">
         <div className="space-y-2">
-          {reminders.map(r => (
-            <div key={r.id} className="flex items-center gap-3 rounded-2xl border border-white/25 bg-white/10 p-3">
-              <div className={`grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br ${r.c}`}><r.icon className="h-5 w-5 text-white" /></div>
-              <div className="min-w-0 flex-1">
-                <div className="truncate text-sm font-semibold text-white">{r.title}</div>
-                <div className="text-[11px] text-white/70">⏰ {r.time} · {r.days}</div>
+          {reminders.map(r => {
+            const RIcon = resolveIcon(r.icon);
+            return (
+              <div key={r.id} className="flex items-center gap-3 rounded-2xl border border-white/25 bg-white/10 p-3">
+                <div className={`grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br ${r.color}`}><RIcon className="h-5 w-5 text-white" /></div>
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm font-semibold text-white">{r.title}</div>
+                  <div className="text-[11px] text-white/70">⏰ {r.reminder_time} · {r.days}</div>
+                </div>
+                <button onClick={() => { api.reminders.update(String(r.id), { is_on: !r.is_on }).then(updated => setReminders(rs => rs.map(x => x.id === r.id ? updated : x))).catch(()=>{}); }} className={`relative h-6 w-11 rounded-full transition ${r.is_on ? "bg-mint" : "bg-white/25"}`}>
+                  <motion.span layout className="absolute top-0.5 h-5 w-5 rounded-full bg-white shadow" style={{ left: r.is_on ? 22 : 2 }} />
+                </button>
+                <button onClick={() => { api.reminders.delete(String(r.id)).catch(()=>{}); setReminders(rs => rs.filter(x => x.id !== r.id)); }} className="grid h-8 w-8 place-items-center rounded-lg bg-pink/15 text-pink"><X className="h-3.5 w-3.5" /></button>
               </div>
-              <button onClick={() => setReminders(rs => rs.map(x => x.id === r.id ? { ...x, on: !x.on } : x))} className={`relative h-6 w-11 rounded-full transition ${r.on ? "bg-mint" : "bg-white/25"}`}>
-                <motion.span layout className="absolute top-0.5 h-5 w-5 rounded-full bg-white shadow" style={{ left: r.on ? 22 : 2 }} />
-              </button>
-              <button onClick={() => setReminders(rs => rs.filter(x => x.id !== r.id))} className="grid h-8 w-8 place-items-center rounded-lg bg-pink/15 text-pink"><X className="h-3.5 w-3.5" /></button>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         {adding ? (
@@ -932,7 +1001,8 @@ function Home_({ go }: { go: (s: Screen) => void }) {
             <div className="flex gap-2">
               <button onClick={() => setAdding(false)} className="flex-1 rounded-xl bg-white/15 py-2.5 text-sm font-semibold text-white">Cancel</button>
               <button onClick={() => {
-                setReminders(rs => [...rs, { id: Date.now(), title: newTitle, time: newTime, days: newDays, icon: Bell, c: "from-pink-400 to-fuchsia-400", on: true }]);
+                api.reminders.create({ title: newTitle, reminder_time: newTime, days: newDays, icon: "Bell", color: "from-pink-400 to-fuchsia-400" })
+                  .then(r => setReminders(rs => [...rs, r])).catch(()=>{});
                 setAdding(false); setNewTitle(""); setNewTime("18:30"); setNewDays("Daily");
               }} className="flex-1 rounded-xl bg-aurora py-2.5 text-sm font-semibold text-white shadow-glow">Save reminder</button>
             </div>
@@ -948,20 +1018,32 @@ function Home_({ go }: { go: (s: Screen) => void }) {
 }
 
 
-function HabitCard({ h }: { h: typeof HABITS[number] }) {
+function HabitCard({ h, onLog }: { h: Habit; onLog?: () => void }) {
+  const HIcon = resolveIcon(h.icon);
   const [done, setDone] = useState(h.done);
-  const pct = Math.min(100, (done / h.goal) * 100);
+  const [streak, setStreak] = useState(h.streak);
+  const pct = Math.min(100, (done / Math.max(h.goal, 1)) * 100);
   const complete = done >= h.goal;
+
+  const logValue = async (val: number) => {
+    setDone(val);
+    try {
+      const res = await api.habits.log(h.id, val);
+      setStreak(res.streak);
+      onLog?.();
+    } catch { /* offline — optimistic update kept */ }
+  };
+
   return (
     <motion.div variants={item} layout className="relative overflow-hidden rounded-2xl border border-white/25 bg-white/15 p-4 backdrop-blur">
       <div className="flex items-center gap-3">
         <div className={`grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-gradient-to-br ${h.color}`}>
-          <h.icon className="h-6 w-6 text-white" />
+          <HIcon className="h-6 w-6 text-white" />
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-2">
             <div className="truncate font-semibold text-white">{h.name}</div>
-            <div className="flex items-center gap-1 text-xs text-amber"><Flame className="h-3 w-3" /> {h.streak}</div>
+            <div className="flex items-center gap-1 text-xs text-amber"><Flame className="h-3 w-3" /> {streak}</div>
           </div>
           <div className="mt-1 flex items-center justify-between text-xs text-white/80">
             <span>{done}/{h.goal} {h.unit}</span>
@@ -972,10 +1054,10 @@ function HabitCard({ h }: { h: typeof HABITS[number] }) {
           </div>
         </div>
         <div className="flex shrink-0 flex-col gap-1.5">
-          <button onClick={() => setDone(Math.min(h.goal, done + 1))} className={`grid h-8 w-8 place-items-center rounded-lg transition active:scale-90 ${complete ? "bg-mint text-background" : "border border-white/30 bg-white/15 text-white"}`} aria-label="Increase">
+          <button onClick={() => logValue(Math.min(h.goal, done + 1))} className={`grid h-8 w-8 place-items-center rounded-lg transition active:scale-90 ${complete ? "bg-mint text-background" : "border border-white/30 bg-white/15 text-white"}`} aria-label="Increase">
             {complete ? <Check className="h-4 w-4" strokeWidth={3} /> : <Plus className="h-4 w-4" />}
           </button>
-          <button onClick={() => setDone(Math.max(0, done - 1))} className="grid h-8 w-8 place-items-center rounded-lg border border-white/30 bg-white/10 text-white transition active:scale-90" aria-label="Decrease">
+          <button onClick={() => logValue(Math.max(0, done - 1))} className="grid h-8 w-8 place-items-center rounded-lg border border-white/30 bg-white/10 text-white transition active:scale-90" aria-label="Decrease">
             <span className="text-lg leading-none font-bold">−</span>
           </button>
         </div>
@@ -986,12 +1068,21 @@ function HabitCard({ h }: { h: typeof HABITS[number] }) {
 
 /* ---------------- HABITS LIST ---------------- */
 function Habits_({}: { go: (s: Screen) => void }) {
+  const { habits, refresh } = useHabitsStore();
   const [filter, setFilter] = useState<"all" | "active" | "done">("all");
+  const [q, setQ] = useState("");
+  useEffect(() => { refresh(); }, []);
+  const visible = habits.filter(h => {
+    const matchQ = h.name.toLowerCase().includes(q.toLowerCase());
+    if (filter === "done")   return matchQ && h.done >= h.goal;
+    if (filter === "active") return matchQ && h.done < h.goal;
+    return matchQ;
+  });
   return (
     <motion.div variants={stagger} initial="initial" animate="animate" className="flex-1 overflow-y-auto scrollbar-hide px-5 pt-5 pb-4">
       <motion.div variants={item} className="relative">
         <Search className="pointer-events-none absolute left-4 top-1/2 h-4.5 w-4.5 -translate-y-1/2 text-white/80" />
-        <input placeholder="Search habits…" className="w-full rounded-2xl border border-white/25 bg-white/15 py-3 pl-11 pr-4 text-sm text-white placeholder-white/60 outline-none focus:border-mint" />
+        <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search habits…" className="w-full rounded-2xl border border-white/25 bg-white/15 py-3 pl-11 pr-4 text-sm text-white placeholder-white/60 outline-none focus:border-mint" />
       </motion.div>
       <motion.div variants={item} className="mt-4 flex gap-2">
         {(["all", "active", "done"] as const).map((f) => (
@@ -1002,7 +1093,7 @@ function Habits_({}: { go: (s: Screen) => void }) {
         ))}
       </motion.div>
       <motion.div variants={stagger} className="mt-5 space-y-3">
-        {HABITS.map((h) => <HabitCard key={h.id} h={h} />)}
+        {visible.map((h) => <HabitCard key={h.id} h={h} onLog={refresh} />)}
       </motion.div>
     </motion.div>
   );
@@ -1011,14 +1102,14 @@ function Habits_({}: { go: (s: Screen) => void }) {
 /* ---------------- ADD HABIT ---------------- */
 function AddHabit({ go }: { go: (s: Screen) => void }) {
   const presets = [
-    { icon: Droplets, label: "Water", unit: "glasses", goal: 8, c: "from-sky-400 to-cyan-300" },
-    { icon: Dumbbell, label: "Workout", unit: "sessions", goal: 1, c: "from-pink-500 to-rose-400" },
-    { icon: BookOpen, label: "Read", unit: "pages", goal: 20, c: "from-amber-400 to-orange-400" },
-    { icon: Brain, label: "Meditate", unit: "minutes", goal: 10, c: "from-violet-500 to-fuchsia-400" },
-    { icon: MoonIcon, label: "Sleep", unit: "hours", goal: 8, c: "from-indigo-500 to-blue-400" },
-    { icon: Music, label: "Practice", unit: "minutes", goal: 30, c: "from-emerald-400 to-teal-300" },
-    { icon: Heart, label: "Gratitude", unit: "entries", goal: 1, c: "from-rose-400 to-pink-300" },
-    { icon: Target, label: "Custom", unit: "times", goal: 1, c: "from-fuchsia-500 to-violet-400" },
+    { icon: Droplets, iconName: "Droplets", label: "Water",     unit: "glasses", goal: 8,  c: "from-sky-400 to-cyan-300" },
+    { icon: Dumbbell, iconName: "Dumbbell", label: "Workout",   unit: "sessions",goal: 1,  c: "from-pink-500 to-rose-400" },
+    { icon: BookOpen, iconName: "BookOpen", label: "Read",      unit: "pages",   goal: 20, c: "from-amber-400 to-orange-400" },
+    { icon: Brain,    iconName: "Brain",    label: "Meditate",  unit: "minutes", goal: 10, c: "from-violet-500 to-fuchsia-400" },
+    { icon: MoonIcon, iconName: "Moon",     label: "Sleep",     unit: "hours",   goal: 8,  c: "from-indigo-500 to-blue-400" },
+    { icon: Music,    iconName: "Music",    label: "Practice",  unit: "minutes", goal: 30, c: "from-emerald-400 to-teal-300" },
+    { icon: Heart,    iconName: "Heart",    label: "Gratitude", unit: "entries", goal: 1,  c: "from-rose-400 to-pink-300" },
+    { icon: Target,   iconName: "Target",   label: "Custom",    unit: "times",   goal: 1,  c: "from-fuchsia-500 to-violet-400" },
   ];
   const [sel, setSel] = useState(0);
   const [name, setName] = useState("Water");
@@ -1027,9 +1118,23 @@ function AddHabit({ go }: { go: (s: Screen) => void }) {
   const [time, setTime] = useState("08:00");
   const days = ["M","T","W","T","F","S","S"];
   const [selDays, setSelDays] = useState<number[]>([0,1,2,3,4]);
+  const [saving, setSaving] = useState(false);
   const pickPreset = (i: number) => {
     setSel(i); const p = presets[i];
     setName(p.label); setGoal(p.goal); setUnit(p.unit);
+  };
+  const handleCreate = async () => {
+    setSaving(true);
+    try {
+      const p = presets[sel];
+      const newHabit = await api.habits.create({ name, icon: p.iconName, color: p.c, goal, unit });
+      _habits = [..._habits, newHabit];
+      _setHabitsGlobal?.([..._habits]);
+      // also add a reminder if user set one
+      await api.reminders.create({ title: name, reminder_time: time, days: selDays.length === 7 ? "Daily" : selDays.length === 5 ? "Mon–Fri" : "Daily", icon: p.iconName, color: p.c }).catch(()=>{});
+      go("home");
+    } catch { /* offline */ go("home"); }
+    finally { setSaving(false); }
   };
   return (
     <motion.div variants={stagger} initial="initial" animate="animate" className="flex-1 overflow-y-auto scrollbar-hide px-5 pt-5 pb-4">
@@ -1092,8 +1197,8 @@ function AddHabit({ go }: { go: (s: Screen) => void }) {
         </div>
       </motion.div>
 
-      <motion.button variants={item} onClick={() => go("home")} className="mt-6 w-full rounded-2xl bg-aurora py-4 font-semibold text-white shadow-glow active:scale-[0.98]">
-        Create habit
+      <motion.button variants={item} onClick={handleCreate} disabled={saving} className="mt-6 w-full rounded-2xl bg-aurora py-4 font-semibold text-white shadow-glow active:scale-[0.98] disabled:opacity-60">
+        {saving ? "Creating…" : "Create habit"}
       </motion.button>
     </motion.div>
   );
@@ -1285,13 +1390,14 @@ function Stats_() {
           <span className="text-[10px] text-white/80">vs last {range === "W" ? "week" : range === "M" ? "month" : "year"}</span>
         </div>
         <div className="mt-4 space-y-3">
-          {HABITS.slice(0, 5).map((h, i) => {
+          {_habits.slice(0, 5).map((h, i) => {
+            const HIcon = resolveIcon(h.icon);
             const pct = 92 - i * 7;
             const delta = [+12, +5, -3, +8, +2][i];
             const up = delta >= 0;
             return (
               <div key={i} className="flex items-center gap-3">
-                <div className={`grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br ${h.color}`}><h.icon className="h-4.5 w-4.5 text-white" /></div>
+                <div className={`grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br ${h.color}`}><HIcon className="h-4.5 w-4.5 text-white" /></div>
                 <div className="min-w-0 flex-1">
                   <div className="flex justify-between text-sm">
                     <span className="truncate text-white">{h.name}</span>
@@ -1444,13 +1550,16 @@ function Calendar_() {
           <span className="rounded-full bg-mint-grad px-3 py-1 text-[10px] font-bold text-white">4 / 6 done</span>
         </div>
         <div className="mt-3 space-y-2.5">
-          {HABITS.slice(0, 6).map((h, i) => (
-            <div key={i} className="flex items-center gap-3 rounded-xl bg-white/15 p-2.5">
-              <div className={`grid h-8 w-8 place-items-center rounded-lg bg-gradient-to-br ${h.color}`}><h.icon className="h-4 w-4 text-white" /></div>
-              <span className="flex-1 text-sm text-white">{h.name}</span>
-              {i < 4 ? <Check className="h-4 w-4 text-mint" /> : <span className="text-xs text-white/80">pending</span>}
-            </div>
-          ))}
+          {_habits.slice(0, 6).map((h, i) => {
+            const HIcon = resolveIcon(h.icon);
+            return (
+              <div key={i} className="flex items-center gap-3 rounded-xl bg-white/15 p-2.5">
+                <div className={`grid h-8 w-8 place-items-center rounded-lg bg-gradient-to-br ${h.color}`}><HIcon className="h-4 w-4 text-white" /></div>
+                <span className="flex-1 text-sm text-white">{h.name}</span>
+                {i < 4 ? <Check className="h-4 w-4 text-mint" /> : <span className="text-xs text-white/80">pending</span>}
+              </div>
+            );
+          })}
         </div>
       </motion.div>
 
@@ -1722,7 +1831,7 @@ function Community_() {
                 <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-white"><Target className="h-3.5 w-3.5 text-mint" /> Challenge {open.name}</div>
                 <div className="mt-2">
                   <label className="text-[10px] uppercase text-white/70">Habit</label>
-                  <CustomSelect value={challengeHabit} onChange={setChallengeHabit} options={HABITS.map(h => h.name)} />
+                  <CustomSelect value={challengeHabit} onChange={setChallengeHabit} options={_habits.map(h => h.name)} />
                 </div>
                 <div className="mt-2">
                   <label className="text-[10px] uppercase text-white/70">Target — {challengeTarget} days in a row</label>
@@ -1743,16 +1852,26 @@ function Community_() {
 
 /* ---------------- NOTIFICATIONS ---------------- */
 function Notifications_({ go }: { go: (s: Screen) => void }) {
-  const notes: { icon: typeof Bell; c: string; t: string; d: string; time: string; target: Screen; unread?: boolean }[] = [
-    { icon: Flame, c: "bg-sunset", t: "14-day streak!", d: "Keep the fire going — tap to see your progress.", time: "2m ago", target: "stats", unread: true },
-    { icon: Bell, c: "bg-aurora", t: "Time to meditate", d: "Your evening session is due in 10 minutes.", time: "1h ago", target: "habits", unread: true },
-    { icon: Trophy, c: "bg-mint-grad", t: "New badge unlocked", d: "You earned 'Rising Star'. View all achievements.", time: "3h ago", target: "achievements", unread: true },
-    { icon: Users, c: "bg-sunset", t: "Maya liked your post", d: "And 3 others reacted to your update.", time: "yesterday", target: "community" },
-    { icon: TrendingUp, c: "bg-aurora", t: "Weekly summary ready", d: "You completed 82% this week — up 12% from last week.", time: "yesterday", target: "stats" },
-    { icon: Calendar, c: "bg-mint-grad", t: "Plan tomorrow", d: "Set up tomorrow's habits in the calendar.", time: "2d ago", target: "calendar" },
-    { icon: Sparkles, c: "bg-sunset", t: "Try a new habit", d: "Based on your routine, journaling could be a great fit.", time: "3d ago", target: "add" },
-  ];
-  const unreadCount = notes.filter(n => n.unread).length;
+  const [notes, setNotes] = useState<AppNotification[]>([]);
+  useEffect(() => { api.notifications.list().then(setNotes).catch(()=>{}); }, []);
+  const unreadCount = notes.filter(n => !n.is_read).length;
+  const handleMarkAllRead = async () => {
+    await api.notifications.markAllRead().catch(()=>{});
+    setNotes(ns => ns.map(n => ({ ...n, is_read: true })));
+  };
+  const handleTap = async (n: AppNotification) => {
+    if (!n.is_read) {
+      await api.notifications.markRead(n.id).catch(()=>{});
+      setNotes(ns => ns.map(x => x.id === n.id ? { ...x, is_read: true } : x));
+    }
+    go(n.route as Screen);
+  };
+  const fmtAgo = (iso: string) => {
+    const m = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
+    if (m < 60) return `${m}m ago`;
+    if (m < 1440) return `${Math.round(m/60)}h ago`;
+    return `${Math.round(m/1440)}d ago`;
+  };
   return (
     <motion.div variants={stagger} initial="initial" animate="animate" className="flex-1 overflow-y-auto scrollbar-hide px-5 pt-5 pb-4">
       <motion.div variants={item} className="flex items-center justify-between rounded-3xl bg-aurora p-4 shadow-glow">
@@ -1760,7 +1879,7 @@ function Notifications_({ go }: { go: (s: Screen) => void }) {
           <div className="font-display text-xl font-bold text-white">Inbox</div>
           <div className="text-xs text-white/85">{unreadCount} unread · tap to open</div>
         </div>
-        <button className="rounded-full bg-white/25 px-3 py-1.5 text-xs font-semibold text-white">Mark all read</button>
+        <button onClick={handleMarkAllRead} className="rounded-full bg-white/25 px-3 py-1.5 text-xs font-semibold text-white">Mark all read</button>
       </motion.div>
 
       <motion.div variants={item} className="mt-4 flex gap-2 overflow-x-auto scrollbar-hide">
@@ -1770,27 +1889,30 @@ function Notifications_({ go }: { go: (s: Screen) => void }) {
       </motion.div>
 
       <motion.div variants={stagger} className="mt-4 space-y-3">
-        {notes.map((n, i) => (
-          <motion.button
-            key={i} variants={item}
-            onClick={() => go(n.target)}
-            whileTap={{ scale: 0.98 }}
-            className="group flex w-full items-start gap-3 rounded-2xl border border-white/25 bg-white/15 p-4 text-left transition hover:bg-white/25"
-          >
-            <div className={`relative grid h-11 w-11 shrink-0 place-items-center rounded-xl ${n.c}`}>
-              <n.icon className="h-5 w-5 text-white" />
-              {n.unread && <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-pink ring-2 ring-white" />}
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="flex justify-between gap-2">
-                <div className="font-semibold text-white">{n.t}</div>
-                <div className="text-[11px] text-white/80 whitespace-nowrap">{n.time}</div>
+        {notes.map((n, i) => {
+          const NIcon = resolveIcon(n.icon);
+          return (
+            <motion.button
+              key={i} variants={item}
+              onClick={() => handleTap(n)}
+              whileTap={{ scale: 0.98 }}
+              className="group flex w-full items-start gap-3 rounded-2xl border border-white/25 bg-white/15 p-4 text-left transition hover:bg-white/25"
+            >
+              <div className={`relative grid h-11 w-11 shrink-0 place-items-center rounded-xl ${n.color_class}`}>
+                <NIcon className="h-5 w-5 text-white" />
+                {!n.is_read && <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-pink ring-2 ring-white" />}
               </div>
-              <div className="mt-0.5 text-sm text-white/80">{n.d}</div>
-            </div>
-            <ChevronRight className="mt-3 h-4 w-4 shrink-0 text-white/70 transition group-hover:translate-x-1" />
-          </motion.button>
-        ))}
+              <div className="min-w-0 flex-1">
+                <div className="flex justify-between gap-2">
+                  <div className="font-semibold text-white">{n.title}</div>
+                  <div className="text-[11px] text-white/80 whitespace-nowrap">{fmtAgo(n.created_at)}</div>
+                </div>
+                <div className="mt-0.5 text-sm text-white/80">{n.body}</div>
+              </div>
+              <ChevronRight className="mt-3 h-4 w-4 shrink-0 text-white/70 transition group-hover:translate-x-1" />
+            </motion.button>
+          );
+        })}
       </motion.div>
     </motion.div>
   );
@@ -1835,16 +1957,20 @@ function ModalSheet({ open, onClose, title, children }: { open: boolean; onClose
   );
 }
 
-function Profile_({ go }: { go: (s: Screen) => void }) {
-  const [avatar, setAvatar] = useState("🌟");
+function Profile_({ go, user, onUserUpdate }: { go: (s: Screen) => void; user: User | null; onUserUpdate: (u: User) => void }) {
+  const [avatar, setAvatar] = useState(user?.avatar ?? "🌟");
   const [modal, setModal] = useState<null | "account" | "appearance" | "language" | "sounds" | "help">(null);
-  const [lang, setLang] = useState("English");
+  const [lang, setLang] = useState(user?.language ?? "English");
   const { theme, setTheme, dark, setDark } = useTheme();
   const [sound, setSound] = useState(true);
   const [haptic, setHaptic] = useState(true);
   const [twoFA, setTwoFA] = useState(false);
   const [toast, setToast] = useState<{ emoji: string; title: string; msg: string } | null>(null);
   const fire = (emoji: string, title: string, msg: string) => { setToast({ emoji, title, msg }); setTimeout(() => setToast(null), 2800); };
+  // persist theme/dark changes to backend
+  const handleThemeChange = (t: ThemeId) => { setTheme(t); api.profile.update({ theme: t }).catch(()=>{}); };
+  const handleDarkChange = (d: boolean) => { setDark(d); api.profile.update({ dark_mode: d }).catch(()=>{}); };
+  const handleLangChange = (l: string) => { setLang(l); api.profile.update({ language: l }).catch(()=>{}); };
 
 
   const Toggle = ({ on, set }: { on: boolean; set: (v: boolean) => void }) => (
@@ -1862,8 +1988,8 @@ function Profile_({ go }: { go: (s: Screen) => void }) {
         </div>
         <div className="relative">
           <div className="mx-auto grid h-24 w-24 place-items-center rounded-3xl bg-white/25 text-5xl backdrop-blur">{avatar}</div>
-          <div className="mt-3 font-display text-2xl font-bold text-white">Alex Morgan</div>
-          <div className="text-sm text-white/80">@alex.morgan · Habit Hero · Lv 12</div>
+          <div className="mt-3 font-display text-2xl font-bold text-white">{user?.name ?? "Alex Morgan"}</div>
+          <div className="text-sm text-white/80">@{(user?.name ?? "alex").toLowerCase().replace(/ /g,".")} · Habit Hero · {user?.xp ?? 0} XP</div>
           <button onClick={() => go("edit-profile")} className="mt-4 inline-flex items-center gap-2 rounded-full bg-white/25 px-4 py-2 text-sm font-semibold text-white backdrop-blur transition hover:bg-white/35">
             <Edit3 className="h-4 w-4" /> Edit profile
           </button>
@@ -1871,7 +1997,7 @@ function Profile_({ go }: { go: (s: Screen) => void }) {
       </motion.div>
 
       <motion.div variants={item} className="mt-5 grid grid-cols-3 gap-3">
-        {[["14","Streak"], ["412","Done"], ["2.4k","XP"]].map(([v, l], i) => (
+        {[[String(user?.streak ?? 0),"Streak"], [String(_habits.filter(h=>h.done>=h.goal).length),"Done today"], [String(user?.xp ?? 0),"XP"]].map(([v, l], i) => (
           <div key={i} className="rounded-2xl border border-white/25 bg-white/15 p-3 text-center">
             <div className="font-display text-xl font-bold text-white">{v}</div>
             <div className="text-[11px] text-white/70">{l}</div>
@@ -1888,13 +2014,13 @@ function Profile_({ go }: { go: (s: Screen) => void }) {
           { icon: Volume2, label: "Sounds & haptics", id: "sounds" as const, val: sound ? "On" : "Off" },
           { icon: HelpCircle, label: "Help center", id: "help" as const },
         ].map((m, i) => (
-          <button key={i} onClick={m.onClick ?? (() => m.id && setModal(m.id))} className="group flex w-full items-center justify-between rounded-2xl border border-white/25 bg-white/12 px-4 py-3.5 text-left transition hover:bg-white/18">
+          <button key={i} onClick={(m as any).onClick ?? (() => (m as any).id && setModal((m as any).id))} className="group flex w-full items-center justify-between rounded-2xl border border-white/25 bg-white/12 px-4 py-3.5 text-left transition hover:bg-white/18">
             <span className="flex items-center gap-3">
               <span className="grid h-9 w-9 place-items-center rounded-xl bg-white/10"><m.icon className="h-4.5 w-4.5 text-mint" /></span>
               <span className="font-medium text-white">{m.label}</span>
             </span>
             <span className="flex items-center gap-2 text-sm text-white/80">
-              {m.val} <ChevronRight className="h-4 w-4 transition group-hover:translate-x-1" />
+              {(m as any).val} <ChevronRight className="h-4 w-4 transition group-hover:translate-x-1" />
             </span>
           </button>
         ))}
@@ -1923,12 +2049,12 @@ function Profile_({ go }: { go: (s: Screen) => void }) {
       <ModalSheet open={modal === "appearance"} onClose={() => setModal(null)} title="Appearance">
         <div className="mb-4 flex items-center justify-between rounded-2xl border border-white/25 bg-white/10 p-3">
           <div><div className="text-sm font-semibold text-white">Dark mode</div><div className="text-[11px] text-white/70">Reduce brightness at night</div></div>
-          <Toggle on={dark} set={setDark} />
+          <Toggle on={dark} set={handleDarkChange} />
         </div>
         <div className="text-xs uppercase tracking-wider text-white/70 mb-2">Theme palette</div>
         <div className="grid grid-cols-2 gap-3">
           {THEMES.map(t => (
-            <button key={t.id} onClick={() => setTheme(t.id as ThemeId)} className={`relative overflow-hidden rounded-2xl border-2 p-3 text-left transition ${theme === t.id ? "border-white shadow-glow" : "border-white/20"}`} style={{ background: t.grad }}>
+            <button key={t.id} onClick={() => handleThemeChange(t.id as ThemeId)} className={`relative overflow-hidden rounded-2xl border-2 p-3 text-left transition ${theme === t.id ? "border-white shadow-glow" : "border-white/20"}`} style={{ background: t.grad }}>
               <div className="font-semibold text-white drop-shadow">{t.label}</div>
               {theme === t.id && <div className="absolute right-2 top-2 grid h-6 w-6 place-items-center rounded-full bg-white"><Check className="h-3.5 w-3.5 text-[oklch(0.35_0.18_320)]" strokeWidth={3} /></div>}
             </button>
@@ -1939,7 +2065,7 @@ function Profile_({ go }: { go: (s: Screen) => void }) {
       <ModalSheet open={modal === "language"} onClose={() => setModal(null)} title="Language">
         <div className="space-y-2">
           {LANGUAGES.map(l => (
-            <button key={l.code} onClick={() => { setLang(l.label); setModal(null); }} className={`flex w-full items-center justify-between rounded-2xl border p-3 text-left transition ${lang === l.label ? "border-white bg-white/25" : "border-white/25 bg-white/10"}`}>
+            <button key={l.code} onClick={() => { handleLangChange(l.label); setModal(null); }} className={`flex w-full items-center justify-between rounded-2xl border p-3 text-left transition ${lang === l.label ? "border-white bg-white/25" : "border-white/25 bg-white/10"}`}>
               <div>
                 <div className="font-semibold text-white">{l.label}</div>
                 <div className="text-[11px] text-white/70" dir={l.code === "ur" || l.code === "ar" ? "rtl" : "ltr"}>{l.native}</div>
@@ -2015,9 +2141,24 @@ function Profile_({ go }: { go: (s: Screen) => void }) {
   );
 }
 
-function EditProfile({ go }: { go: (s: Screen) => void }) {
-  const [avatar, setAvatar] = useState("🌟");
+function EditProfile({ go, user, onUserUpdate }: { go: (s: Screen) => void; user: User | null; onUserUpdate: (u: User) => void }) {
+  const [avatar, setAvatar] = useState(user?.avatar ?? "🌟");
   const [picker, setPicker] = useState(false);
+  const [nameV, setNameV] = useState(user?.name ?? "");
+  const [bioV, setBioV] = useState(user?.bio ?? "");
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const updated = await api.profile.update({ name: nameV, bio: bioV, avatar });
+      api.auth.saveToken(localStorage.getItem("habitual:token") ?? "", updated);
+      onUserUpdate(updated);
+      go("profile");
+    } catch { go("profile"); }
+    finally { setSaving(false); }
+  };
+
   return (
     <motion.div variants={stagger} initial="initial" animate="animate" className="relative flex-1 overflow-y-auto scrollbar-hide px-5 pt-5 pb-4">
       <motion.div variants={item} className="flex flex-col items-center pt-4">
@@ -2031,22 +2172,23 @@ function EditProfile({ go }: { go: (s: Screen) => void }) {
       </motion.div>
 
       <motion.div variants={item} className="mt-6 space-y-4">
-        {[
-          { label: "Full name", value: "Alex Morgan" },
-          { label: "Username", value: "@alex.morgan" },
-          { label: "Email", value: "alex@pulse.app" },
-          { label: "Bio", value: "Building better habits, one day at a time." },
-        ].map((f, i) => (
-          <div key={i}>
-            <label className="text-xs uppercase tracking-wider text-white/70">{f.label}</label>
-            <input defaultValue={f.value} className="mt-2 w-full rounded-2xl border border-white/25 bg-white/15 px-4 py-3 text-white outline-none focus:border-mint" />
-          </div>
-        ))}
+        <div>
+          <label className="text-xs uppercase tracking-wider text-white/70">Full name</label>
+          <input value={nameV} onChange={e => setNameV(e.target.value)} className="mt-2 w-full rounded-2xl border border-white/25 bg-white/15 px-4 py-3 text-white outline-none focus:border-mint" />
+        </div>
+        <div>
+          <label className="text-xs uppercase tracking-wider text-white/70">Email</label>
+          <input defaultValue={user?.email ?? ""} readOnly className="mt-2 w-full rounded-2xl border border-white/25 bg-white/10 px-4 py-3 text-white/60 outline-none cursor-not-allowed" />
+        </div>
+        <div>
+          <label className="text-xs uppercase tracking-wider text-white/70">Bio</label>
+          <input value={bioV} onChange={e => setBioV(e.target.value)} className="mt-2 w-full rounded-2xl border border-white/25 bg-white/15 px-4 py-3 text-white outline-none focus:border-mint" />
+        </div>
       </motion.div>
 
       <motion.div variants={item} className="mt-6 flex gap-3">
         <button onClick={() => go("profile")} className="flex-1 rounded-2xl border border-white/25 bg-white/15 py-3.5 font-semibold text-white">Cancel</button>
-        <button onClick={() => go("profile")} className="flex-1 rounded-2xl bg-aurora py-3.5 font-semibold text-white shadow-glow active:scale-[0.98]">Save changes</button>
+        <button onClick={handleSave} disabled={saving} className="flex-1 rounded-2xl bg-aurora py-3.5 font-semibold text-white shadow-glow active:scale-[0.98] disabled:opacity-60">{saving ? "Saving…" : "Save changes"}</button>
       </motion.div>
 
       <AnimatePresence>
@@ -2087,11 +2229,27 @@ export default function PulseApp() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [theme, setTheme] = useState<ThemeId>("candy");
   const [dark, setDark] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
 
   const go = (s: Screen) => setScreen(s);
   const isAuthScreen = ["splash", "auth", "login", "signup", "terms"].includes(screen);
-
   const showBottomNav = !isAuthScreen;
+
+  // Sync theme/dark from logged-in user profile
+  useEffect(() => {
+    if (user) {
+      if (user.theme) setTheme(user.theme as ThemeId);
+      if (user.dark_mode !== undefined) setDark(Boolean(user.dark_mode));
+    }
+  }, [user]);
+
+  const handleUser = (u: User) => setUser(u);
+  const handleLogout = () => {
+    api.auth.clearSession();
+    setUser(null);
+    setDrawerOpen(false);
+    setTimeout(() => go("auth"), 200);
+  };
 
   return (
     <ThemeCtx.Provider value={{ theme, setTheme, dark, setDark }}>
@@ -2101,24 +2259,23 @@ export default function PulseApp() {
 
         <div className="perspective-1200 relative flex-1 overflow-hidden" style={{ perspective: "1400px" }}>
           <AnimatePresence mode="wait">
-            {screen === "splash" && <Splash key="splash" go={go} />}
-            {screen === "auth" && <BookAuth key="auth" go={go} />}
-            {screen === "login" && <Login key="login" go={go} />}
-            {screen === "signup" && <Signup key="signup" go={go} />}
-            {screen === "terms" && <Terms key="terms" go={go} />}
-            {screen === "home" && <motion.div key="home" {...appScreenVariants} className="flex h-full flex-col"><Home_ go={go} /></motion.div>}
-            {screen === "habits" && <motion.div key="habits" {...appScreenVariants} className="flex h-full flex-col"><Habits_ go={go} /></motion.div>}
-            {screen === "add" && <motion.div key="add" {...appScreenVariants} className="flex h-full flex-col"><AddHabit go={go} /></motion.div>}
-            {screen === "stats" && <motion.div key="stats" {...appScreenVariants} className="flex h-full flex-col"><Stats_ /></motion.div>}
-            {screen === "calendar" && <motion.div key="cal" {...appScreenVariants} className="flex h-full flex-col"><Calendar_ /></motion.div>}
+            {screen === "splash"       && <Splash key="splash" go={go} onUser={handleUser} />}
+            {screen === "auth"         && <BookAuth key="auth" go={go} onUser={handleUser} />}
+            {screen === "login"        && <Login key="login" go={go} />}
+            {screen === "signup"       && <Signup key="signup" go={go} />}
+            {screen === "terms"        && <Terms key="terms" go={go} />}
+            {screen === "home"         && <motion.div key="home" {...appScreenVariants} className="flex h-full flex-col"><Home_ go={go} user={user} /></motion.div>}
+            {screen === "habits"       && <motion.div key="habits" {...appScreenVariants} className="flex h-full flex-col"><Habits_ go={go} /></motion.div>}
+            {screen === "add"          && <motion.div key="add" {...appScreenVariants} className="flex h-full flex-col"><AddHabit go={go} /></motion.div>}
+            {screen === "stats"        && <motion.div key="stats" {...appScreenVariants} className="flex h-full flex-col"><Stats_ /></motion.div>}
+            {screen === "calendar"     && <motion.div key="cal" {...appScreenVariants} className="flex h-full flex-col"><Calendar_ /></motion.div>}
             {screen === "achievements" && <motion.div key="ach" {...appScreenVariants} className="flex h-full flex-col"><Achievements_ /></motion.div>}
-            {screen === "community" && <motion.div key="com" {...appScreenVariants} className="flex h-full flex-col"><Community_ /></motion.div>}
-            {screen === "notifications" && <motion.div key="not" {...appScreenVariants} className="flex h-full flex-col"><Notifications_ go={go} /></motion.div>}
-            {screen === "profile" && <motion.div key="pro" {...appScreenVariants} className="flex h-full flex-col"><Profile_ go={go} /></motion.div>}
-            {screen === "edit-profile" && <motion.div key="edit" {...appScreenVariants} className="flex h-full flex-col"><EditProfile go={go} /></motion.div>}
+            {screen === "community"    && <motion.div key="com" {...appScreenVariants} className="flex h-full flex-col"><Community_ /></motion.div>}
+            {screen === "notifications"&& <motion.div key="not" {...appScreenVariants} className="flex h-full flex-col"><Notifications_ go={go} /></motion.div>}
+            {screen === "profile"      && <motion.div key="pro" {...appScreenVariants} className="flex h-full flex-col"><Profile_ go={go} user={user} onUserUpdate={handleUser} /></motion.div>}
+            {screen === "edit-profile" && <motion.div key="edit" {...appScreenVariants} className="flex h-full flex-col"><EditProfile go={go} user={user} onUserUpdate={handleUser} /></motion.div>}
           </AnimatePresence>
         </div>
-
 
         {showBottomNav && <BottomNav active={screen} go={go} />}
 
@@ -2126,7 +2283,7 @@ export default function PulseApp() {
           open={drawerOpen}
           close={() => setDrawerOpen(false)}
           go={go}
-          logout={() => { setDrawerOpen(false); setTimeout(() => go("auth"), 200); }}
+          logout={handleLogout}
         />
       </PhoneFrame>
     </div>
