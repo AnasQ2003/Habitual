@@ -2,7 +2,7 @@
 const BASE = 'http://localhost:5000';
 
 function getToken(): string | null {
-  return localStorage.getItem('habitual:token');
+  return localStorage.getItem('habitual:token') || sessionStorage.getItem('habitual:token');
 }
 
 async function request<T>(
@@ -99,28 +99,42 @@ export type LeaderboardEntry = {
 // ─── Auth ──────────────────────────────────────────────────────────────────────
 export const api = {
   auth: {
+    getToken,
+
     signup: (name: string, email: string, password: string) =>
       request<{ token: string; user: User }>('POST', '/api/auth/signup', { name, email, password }, false),
 
     login: (email: string, password: string) =>
       request<{ token: string; user: User }>('POST', '/api/auth/login', { email, password }, false),
 
-    saveToken: (token: string, user: User) => {
-      localStorage.setItem('habitual:token', token);
-      localStorage.setItem('habitual:user', JSON.stringify(user));
+    saveToken: (token: string, user: User, remember?: boolean) => {
+      let useRemember = remember;
+      if (useRemember === undefined) {
+        useRemember = !sessionStorage.getItem('habitual:token');
+      }
+      const storage = useRemember ? localStorage : sessionStorage;
+      const otherStorage = useRemember ? sessionStorage : localStorage;
+
+      storage.setItem('habitual:token', token);
+      storage.setItem('habitual:user', JSON.stringify(user));
+
+      otherStorage.removeItem('habitual:token');
+      otherStorage.removeItem('habitual:user');
     },
 
     clearSession: () => {
       localStorage.removeItem('habitual:token');
       localStorage.removeItem('habitual:user');
+      sessionStorage.removeItem('habitual:token');
+      sessionStorage.removeItem('habitual:user');
     },
 
     getStoredUser: (): User | null => {
-      const raw = localStorage.getItem('habitual:user');
+      const raw = localStorage.getItem('habitual:user') || sessionStorage.getItem('habitual:user');
       return raw ? JSON.parse(raw) : null;
     },
 
-    isLoggedIn: () => !!localStorage.getItem('habitual:token'),
+    isLoggedIn: () => !!(localStorage.getItem('habitual:token') || sessionStorage.getItem('habitual:token')),
   },
 
   // ─── Profile ───────────────────────────────────────────────────────────────

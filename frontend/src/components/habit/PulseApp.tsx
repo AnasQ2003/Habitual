@@ -218,6 +218,19 @@ function BookAuth({ go, onUser }: { go: (s: Screen) => void; onUser: (u: User) =
   const [forgot, setForgot] = useState(false);
   const [loading, setLoading] = useState(false);
   const [authErr, setAuthErr] = useState("");
+  const [rememberMe, setRememberMe] = useState(true);
+  const [toast, setToast] = useState<{ emoji: string; title: string; msg: string } | null>(null);
+  const fire = (emoji: string, title: string, msg: string) => {
+    setToast({ emoji, title, msg });
+    setTimeout(() => setToast(null), 2800);
+  };
+  const showSocialMessage = (platform: "Google" | "Apple") => {
+    if (platform === "Google") {
+      fire("👾", "Google Auth", "Under construction! Our code gnomes are busy linking Google. Stay tuned!");
+    } else {
+      fire("🍎", "Apple Auth", "Work underway! We are crafting a seamless Apple login experience for you.");
+    }
+  };
   const isLogin = page === "login";
   // controlled inputs
   const loginEmail = useRef(""); const loginPw = useRef("");
@@ -228,7 +241,7 @@ function BookAuth({ go, onUser }: { go: (s: Screen) => void; onUser: (u: User) =
     setLoading(true); setAuthErr("");
     try {
       const { token, user } = await api.auth.login(loginEmail.current, loginPw.current);
-      api.auth.saveToken(token, user);
+      api.auth.saveToken(token, user, rememberMe);
       onUser(user);
       go("home");
     } catch (e: any) { setAuthErr(e.message ?? "Login failed"); }
@@ -249,6 +262,27 @@ function BookAuth({ go, onUser }: { go: (s: Screen) => void; onUser: (u: User) =
   return (
     <motion.div key="auth" {...screenVariants} className="relative flex h-full flex-col justify-center px-5 py-5">
       <Blobs />
+
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            initial={{ y: -40, opacity: 0, scale: 0.9 }}
+            animate={{ y: 0, opacity: 1, scale: 1 }}
+            exit={{ y: -30, opacity: 0 }}
+            transition={{ type: "spring", stiffness: 300, damping: 22 }}
+            className="absolute left-1/2 top-4 z-[70] w-[88%] max-w-[360px] -translate-x-1/2 overflow-hidden rounded-2xl border border-white/40 p-3 shadow-2xl"
+            style={{ background: "linear-gradient(135deg, oklch(0.55 0.25 320 / 0.95), oklch(0.5 0.25 280 / 0.95))", backdropFilter: "blur(20px)" }}
+          >
+            <div className="flex items-center gap-3">
+              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white/25 text-2xl">{toast.emoji}</div>
+              <div className="min-w-0 flex-1">
+                <div className="font-display text-sm font-bold text-white">{toast.title}</div>
+                <div className="text-[11px] text-white/90">{toast.msg}</div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="relative z-10 mx-auto flex items-center gap-2.5">
         <div className="grid h-12 w-12 place-items-center rounded-2xl bg-aurora shadow-glow">
@@ -285,7 +319,15 @@ function BookAuth({ go, onUser }: { go: (s: Screen) => void; onUser: (u: User) =
                   {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
-              <button onClick={() => setForgot(true)} className="ml-auto block text-[12px] font-semibold text-white/90 hover:underline">Forgot password?</button>
+              <div className="flex items-center justify-between">
+                <button type="button" onClick={() => setRememberMe(!rememberMe)} className="flex items-center gap-1.5 text-[12px] font-semibold text-white/90">
+                  <span className="grid h-3.5 w-3.5 place-items-center rounded-[4px] border transition" style={{ borderColor: rememberMe ? "white" : "oklch(1 0 0 / 0.5)", background: rememberMe ? "white" : "transparent" }}>
+                    {rememberMe && <Check className="h-2.5 w-2.5 text-[oklch(0.45_0.22_320)]" strokeWidth={3.5} />}
+                  </span>
+                  Remember me
+                </button>
+                <button type="button" onClick={() => setForgot(true)} className="text-[12px] font-semibold text-white/90 hover:underline">Forgot password?</button>
+              </div>
             </div>
             {authErr && !isLogin === false && <p className="mt-2 text-[11px] text-pink">{authErr}</p>}
             <button onClick={handleLogin} disabled={!agreeLogin || loading} className="mt-4 w-full rounded-2xl bg-white py-3 text-base font-semibold text-[oklch(0.35_0.18_320)] shadow-glow active:scale-[0.98] transition disabled:opacity-50">{loading ? "Signing in…" : "Log in"}</button>
@@ -295,8 +337,8 @@ function BookAuth({ go, onUser }: { go: (s: Screen) => void; onUser: (u: User) =
             </div>
 
             <div className="grid grid-cols-2 gap-2.5">
-              <button className="flex items-center justify-center gap-2 rounded-xl bg-white py-2.5 text-sm font-semibold text-[oklch(0.25_0.08_280)] transition hover:scale-[1.02]"><GoogleLogo /> Google</button>
-              <button className="flex items-center justify-center gap-2 rounded-xl bg-black py-2.5 text-sm font-semibold text-white transition hover:scale-[1.02]"><AppleLogo /> Apple</button>
+              <button onClick={() => showSocialMessage("Google")} className="flex items-center justify-center gap-2 rounded-xl bg-white py-2.5 text-sm font-semibold text-[oklch(0.25_0.08_280)] transition hover:scale-[1.02]"><GoogleLogo /> Google</button>
+              <button onClick={() => showSocialMessage("Apple")} className="flex items-center justify-center gap-2 rounded-xl bg-black py-2.5 text-sm font-semibold text-white transition hover:scale-[1.02]"><AppleLogo /> Apple</button>
             </div>
 
             <button onClick={() => setAgreeLogin(!agreeLogin)} className="mt-4 flex items-start gap-2 text-left">
@@ -339,9 +381,8 @@ function BookAuth({ go, onUser }: { go: (s: Screen) => void; onUser: (u: User) =
             </div>
 
             <div className="grid grid-cols-2 gap-2.5">
-              <button className="flex items-center justify-center gap-2 rounded-xl bg-white py-2.5 text-sm font-semibold text-[oklch(0.25_0.08_280)]"><GoogleLogo /> Google</button>
-
-              <button className="flex items-center justify-center gap-2 rounded-xl bg-black py-2.5 text-sm font-semibold text-white"><AppleLogo /> Apple</button>
+              <button onClick={() => showSocialMessage("Google")} className="flex items-center justify-center gap-2 rounded-xl bg-white py-2.5 text-sm font-semibold text-[oklch(0.25_0.08_280)]"><GoogleLogo /> Google</button>
+              <button onClick={() => showSocialMessage("Apple")} className="flex items-center justify-center gap-2 rounded-xl bg-black py-2.5 text-sm font-semibold text-white"><AppleLogo /> Apple</button>
             </div>
 
             <p className="mt-4 text-center text-[13px] text-white/85">Have an account? <button onClick={() => setPage("login")} className="font-bold text-white underline-offset-2 hover:underline">Sign in</button></p>
@@ -423,46 +464,140 @@ function Field({ icon: Icon, ...props }: { icon: typeof Mail } & React.InputHTML
   );
 }
 
-function Login({ go }: { go: (s: Screen) => void }) {
+function Login({ go, onUser }: { go: (s: Screen) => void; onUser: (u: User) => void }) {
   const [show, setShow] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [authErr, setAuthErr] = useState("");
+  const [rememberMe, setRememberMe] = useState(true);
+  const [toast, setToast] = useState<{ emoji: string; title: string; msg: string } | null>(null);
+
+  const email = useRef("");
+  const password = useRef("");
+
+  const fire = (emoji: string, title: string, msg: string) => {
+    setToast({ emoji, title, msg });
+    setTimeout(() => setToast(null), 2800);
+  };
+
+  const showSocialMessage = (platform: "Google" | "Apple") => {
+    if (platform === "Google") {
+      fire("👾", "Google Auth", "Under construction! Our code gnomes are busy linking Google. Stay tuned!");
+    } else {
+      fire("🍎", "Apple Auth", "Work underway! We are crafting a seamless Apple login experience for you.");
+    }
+  };
+
+  const handleLogin = async () => {
+    setLoading(true); setAuthErr("");
+    try {
+      const { token, user } = await api.auth.login(email.current, password.current);
+      api.auth.saveToken(token, user, rememberMe);
+      onUser(user);
+      go("home");
+    } catch (e: any) {
+      setAuthErr(e.message ?? "Login failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <AuthShell title="Welcome back" subtitle="Log in to keep your streaks alive" onBack={() => go("auth")}>
-      <div className="space-y-4">
-        <Field icon={Mail} type="email" placeholder="you@email.com" />
-        <div className="relative">
-          <Field icon={Lock} type={show ? "text" : "password"} placeholder="Password" />
-          <button onClick={() => setShow(!show)} className="absolute right-4 top-1/2 -translate-y-1/2 text-white/70">
-            {show ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-          </button>
+      <div className="relative">
+        <AnimatePresence>
+          {toast && (
+            <motion.div
+              initial={{ y: -40, opacity: 0, scale: 0.9 }}
+              animate={{ y: 0, opacity: 1, scale: 1 }}
+              exit={{ y: -30, opacity: 0 }}
+              transition={{ type: "spring", stiffness: 300, damping: 22 }}
+              className="absolute left-1/2 -top-12 z-[70] w-[95%] -translate-x-1/2 overflow-hidden rounded-2xl border border-white/40 p-3 shadow-2xl"
+              style={{ background: "linear-gradient(135deg, oklch(0.55 0.25 320 / 0.95), oklch(0.5 0.25 280 / 0.95))", backdropFilter: "blur(20px)" }}
+            >
+              <div className="flex items-center gap-3">
+                <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white/25 text-2xl">{toast.emoji}</div>
+                <div className="min-w-0 flex-1">
+                  <div className="font-display text-sm font-bold text-white">{toast.title}</div>
+                  <div className="text-[11px] text-white/90">{toast.msg}</div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <div className="space-y-4">
+          <Field icon={Mail} type="email" placeholder="you@email.com" onChange={e => { email.current = e.target.value; }} />
+          <div className="relative">
+            <Field icon={Lock} type={show ? "text" : "password"} placeholder="Password" onChange={e => { password.current = e.target.value; }} />
+            <button type="button" onClick={() => setShow(!show)} className="absolute right-4 top-1/2 -translate-y-1/2 text-white/70">
+              {show ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+            </button>
+          </div>
+          
+          <div className="flex items-center justify-between">
+            <button type="button" onClick={() => setRememberMe(!rememberMe)} className="flex items-center gap-2 text-sm text-white/80">
+              <span className={`grid h-5 w-5 shrink-0 place-items-center rounded-md border transition ${rememberMe ? "border-mint bg-mint" : "border-white/30"}`}>
+                {rememberMe && <Check className="h-3.5 w-3.5 text-background" strokeWidth={3} />}
+              </span>
+              Remember me
+            </button>
+            <button type="button" className="text-sm text-mint hover:underline">Forgot password?</button>
+          </div>
         </div>
-        <button className="ml-auto block text-sm text-mint">Forgot password?</button>
+
+        {authErr && <p className="mt-2 text-sm text-pink">{authErr}</p>}
+
+        <button onClick={handleLogin} disabled={loading} className="mt-8 w-full rounded-2xl bg-aurora py-4 font-semibold text-white shadow-glow active:scale-[0.98] transition disabled:opacity-50">
+          {loading ? "Signing in…" : "Log in"}
+        </button>
+
+        <div className="my-6 flex items-center gap-3 text-xs text-white/80">
+          <div className="h-px flex-1 bg-white/10" /> OR continue with <div className="h-px flex-1 bg-white/10" />
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <button type="button" onClick={() => showSocialMessage("Google")} className="flex items-center justify-center gap-2 rounded-2xl border border-white/25 bg-white/15 py-3 text-sm font-semibold text-white transition hover:bg-white/10"><GoogleLogo /> Google</button>
+          <button type="button" onClick={() => showSocialMessage("Apple")} className="flex items-center justify-center gap-2 rounded-2xl border border-white/25 bg-white/15 py-3 text-sm font-semibold text-white transition hover:bg-white/10"><AppleLogo /> Apple</button>
+        </div>
+
+        <p className="mt-8 text-center text-sm text-white/80">
+          New here? <button type="button" onClick={() => go("auth")} className="font-semibold text-mint hover:underline">Create account</button>
+        </p>
       </div>
-      <button onClick={() => go("home")} className="mt-8 w-full rounded-2xl bg-aurora py-4 font-semibold text-white shadow-glow active:scale-[0.98] transition">
-        Log in
-      </button>
-      <div className="my-6 flex items-center gap-3 text-xs text-white/80">
-        <div className="h-px flex-1 bg-white/10" /> OR <div className="h-px flex-1 bg-white/10" />
-      </div>
-      <div className="grid grid-cols-3 gap-3">
-        {["G", "", "f"].map((l, i) => (
-          <button key={i} className="rounded-2xl border border-white/25 bg-white/15 py-3 text-lg font-bold text-white transition hover:bg-white/10">{l}</button>
-        ))}
-      </div>
-      <p className="mt-8 text-center text-sm text-white/80">
-        New here? <button onClick={() => go("auth")} className="font-semibold text-mint">Create account</button>
-      </p>
     </AuthShell>
   );
 }
 
-function Signup({ go }: { go: (s: Screen) => void }) {
+function Signup({ go, onUser }: { go: (s: Screen) => void; onUser: (u: User) => void }) {
   const [agree, setAgree] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [authErr, setAuthErr] = useState("");
+
+  const name = useRef("");
+  const email = useRef("");
+  const password = useRef("");
+
+  const handleSignup = async () => {
+    if (!agree) return;
+    setLoading(true); setAuthErr("");
+    try {
+      const { token, user } = await api.auth.signup(name.current, email.current, password.current);
+      api.auth.saveToken(token, user, true);
+      onUser(user);
+      go("home");
+    } catch (e: any) {
+      setAuthErr(e.message ?? "Signup failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <AuthShell title="Create account" subtitle="Start your habit journey today" onBack={() => go("auth")}>
       <div className="space-y-4">
-        <Field icon={UserIcon} placeholder="Full name" />
-        <Field icon={Mail} type="email" placeholder="you@email.com" />
-        <Field icon={Lock} type="password" placeholder="Password" />
+        <Field icon={UserIcon} placeholder="Full name" onChange={e => { name.current = e.target.value; }} />
+        <Field icon={Mail} type="email" placeholder="you@email.com" onChange={e => { email.current = e.target.value; }} />
+        <Field icon={Lock} type="password" placeholder="Password" onChange={e => { password.current = e.target.value; }} />
       </div>
       <button onClick={() => setAgree(!agree)} className="mt-6 flex items-start gap-3 text-left">
         <span className={`mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-md border transition ${agree ? "border-mint bg-mint" : "border-white/30"}`}>
@@ -472,11 +607,14 @@ function Signup({ go }: { go: (s: Screen) => void }) {
           I agree to the <button onClick={(e) => { e.stopPropagation(); go("terms"); }} className="text-mint underline">Terms & Privacy Policy</button>
         </span>
       </button>
-      <button onClick={() => go("home")} disabled={!agree} className="mt-6 w-full rounded-2xl bg-aurora py-4 font-semibold text-white shadow-glow transition active:scale-[0.98] disabled:opacity-40">
-        Create account
+
+      {authErr && <p className="mt-2 text-sm text-pink">{authErr}</p>}
+
+      <button onClick={handleSignup} disabled={!agree || loading} className="mt-6 w-full rounded-2xl bg-aurora py-4 font-semibold text-white shadow-glow transition active:scale-[0.98] disabled:opacity-40">
+        {loading ? "Creating…" : "Create account"}
       </button>
       <p className="mt-6 text-center text-sm text-white/80">
-        Have an account? <button onClick={() => go("login")} className="font-semibold text-mint">Log in</button>
+        Have an account? <button onClick={() => go("login")} className="font-semibold text-mint hover:underline">Log in</button>
       </p>
     </AuthShell>
   );
@@ -2152,7 +2290,7 @@ function EditProfile({ go, user, onUserUpdate }: { go: (s: Screen) => void; user
     setSaving(true);
     try {
       const updated = await api.profile.update({ name: nameV, bio: bioV, avatar });
-      api.auth.saveToken(localStorage.getItem("habitual:token") ?? "", updated);
+      api.auth.saveToken(api.auth.getToken() ?? "", updated);
       onUserUpdate(updated);
       go("profile");
     } catch { go("profile"); }
@@ -2261,8 +2399,8 @@ export default function PulseApp() {
           <AnimatePresence mode="wait">
             {screen === "splash"       && <Splash key="splash" go={go} onUser={handleUser} />}
             {screen === "auth"         && <BookAuth key="auth" go={go} onUser={handleUser} />}
-            {screen === "login"        && <Login key="login" go={go} />}
-            {screen === "signup"       && <Signup key="signup" go={go} />}
+            {screen === "login"        && <Login key="login" go={go} onUser={handleUser} />}
+            {screen === "signup"       && <Signup key="signup" go={go} onUser={handleUser} />}
             {screen === "terms"        && <Terms key="terms" go={go} />}
             {screen === "home"         && <motion.div key="home" {...appScreenVariants} className="flex h-full flex-col"><Home_ go={go} user={user} /></motion.div>}
             {screen === "habits"       && <motion.div key="habits" {...appScreenVariants} className="flex h-full flex-col"><Habits_ go={go} /></motion.div>}
