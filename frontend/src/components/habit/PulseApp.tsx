@@ -60,6 +60,82 @@ function CustomSelect({ value, onChange, options }: { value: string; onChange: (
   );
 }
 
+type ToastType = { emoji: string; title: string; msg: string } | null;
+
+function ToastNotification({ toast }: { toast: ToastType }) {
+  return (
+    <AnimatePresence>
+      {toast && (
+        <motion.div
+          initial={{ y: -40, opacity: 0, scale: 0.9 }}
+          animate={{ y: 0, opacity: 1, scale: 1 }}
+          exit={{ y: -30, opacity: 0 }}
+          transition={{ type: "spring", stiffness: 300, damping: 22 }}
+          className="absolute left-1/2 top-4 z-[70] w-[88%] max-w-[360px] -translate-x-1/2 overflow-hidden rounded-2xl border border-white/40 p-3 shadow-2xl"
+          style={{ background: "linear-gradient(135deg, oklch(0.55 0.25 320 / 0.95), oklch(0.5 0.25 280 / 0.95))", backdropFilter: "blur(20px)" }}
+        >
+          <div className="flex items-center gap-3">
+            <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white/25 text-2xl" style={{ fontFamily: 'Segoe UI Emoji, Apple Color Emoji, Noto Color Emoji, sans-serif' }}>{toast.emoji}</div>
+            <div className="min-w-0 flex-1">
+              <div className="font-display text-sm font-bold text-white">{toast.title}</div>
+              <div className="text-[11px] text-white/90">{toast.msg}</div>
+            </div>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
+function AppFooter({ fire, go }: { fire?: (emoji: string, title: string, msg: string) => void; go?: (s: Screen) => void }) {
+  const handleSocial = (platform: string, emoji: string, detail: string) => {
+    if (fire) {
+      fire(emoji, platform, detail);
+    }
+  };
+
+  return (
+    <motion.div variants={item} className="mt-12 border-t border-white/10 pt-6 pb-4 text-center">
+      <div className="flex items-center justify-center gap-2">
+        <div className="grid h-7 w-7 place-items-center rounded-lg bg-aurora">
+          <Sparkles className="h-4 w-4 text-white" />
+        </div>
+        <span className="font-display text-sm font-bold text-white">Pulse</span>
+      </div>
+
+      <p className="mt-2 text-[11px] text-white/60">
+        Empowering your daily consistency & wellness.
+      </p>
+
+      <div className="mt-4 flex justify-center gap-3">
+        {[
+          { name: "Twitter", emoji: "🐦", icon: Globe, detail: "Check out @PulseTracker on X for daily wellness tips!" },
+          { name: "GitHub", emoji: "💻", icon: FileText, detail: "Pulse is open source. Star our repository on GitHub!" },
+          { name: "Discord", emoji: "💬", icon: Users, detail: "Join our vibrant Discord community of habit builders!" },
+        ].map((s) => (
+          <button
+            key={s.name}
+            onClick={() => handleSocial(s.name, s.emoji, s.detail)}
+            className="grid h-8 w-8 place-items-center rounded-xl bg-white/5 text-white/70 hover:bg-white/15 hover:text-white transition active:scale-90"
+          >
+            <s.icon className="h-4 w-4" />
+          </button>
+        ))}
+      </div>
+
+      <div className="mt-4 flex justify-center gap-3 text-[10px] font-semibold text-white/50">
+        <button onClick={() => go?.("terms")} className="hover:text-white transition underline">Privacy Policy</button>
+        <span>•</span>
+        <button onClick={() => go?.("terms")} className="hover:text-white transition underline">Terms of Service</button>
+      </div>
+
+      <p className="mt-4 text-[9px] text-white/40 tracking-wider font-semibold uppercase">
+        © {new Date().getFullYear()} Pulse App Inc. · v2.4.0
+      </p>
+    </motion.div>
+  );
+}
+
 type Screen =
   | "splash" | "auth" | "login" | "signup" | "terms"
   | "home" | "habits" | "add" | "stats" | "calendar" | "achievements" | "community" | "notifications"
@@ -815,9 +891,34 @@ function Drawer({ open, close, go, logout, user }: { open: boolean; close: () =>
               ))}
             </div>
 
-            <button onClick={logout} className="mt-auto flex w-full items-center justify-center gap-2 rounded-2xl border border-pink/30 bg-pink/10 py-3.5 font-semibold text-pink transition hover:bg-pink/20">
-              <LogOut className="h-4 w-4" /> Log out
-            </button>
+            <div className="mt-auto pt-6 w-full">
+              <button onClick={logout} className="flex w-full items-center justify-center gap-2 rounded-2xl border border-pink/30 bg-pink/10 py-3.5 font-semibold text-pink transition hover:bg-pink/20">
+                <LogOut className="h-4 w-4" /> Log out
+              </button>
+
+              {/* Drawer footer */}
+              <div className="mt-4 border-t border-white/10 pt-4 text-center">
+                <div className="flex justify-center gap-4 mb-2.5">
+                  <button onClick={() => fire("🐦", "Twitter / X", "Check out @PulseTracker on X for daily motivation!")} className="text-white/60 hover:text-white transition" aria-label="Twitter">
+                    <Globe className="h-4 w-4" />
+                  </button>
+                  <button onClick={() => fire("💻", "GitHub", "Pulse is proudly open source. Visit our GitHub repository!")} className="text-white/60 hover:text-white transition" aria-label="GitHub">
+                    <FileText className="h-4 w-4" />
+                  </button>
+                  <button onClick={() => fire("💬", "Discord", "Join the Pulse Discord Server to share your streak success!")} className="text-white/60 hover:text-white transition" aria-label="Discord">
+                    <Users className="h-4 w-4" />
+                  </button>
+                </div>
+                <div className="flex justify-center gap-2.5 text-[10px] text-white/50 mb-2">
+                  <button onClick={() => { close(); go("terms"); }} className="underline hover:text-white transition">Privacy</button>
+                  <span>•</span>
+                  <button onClick={() => { close(); go("terms"); }} className="underline hover:text-white transition">Terms</button>
+                </div>
+                <div className="text-[9px] text-white/40 tracking-wider font-semibold uppercase">
+                  © 2026 PULSE · ALL RIGHTS RESERVED
+                </div>
+              </div>
+            </div>
           </div>
 
           <ModalSheet open={modal === "settings"} onClose={() => setModal(null)} title="Settings">
@@ -873,26 +974,7 @@ function Drawer({ open, close, go, logout, user }: { open: boolean; close: () =>
             </div>
           </ModalSheet>
 
-          <AnimatePresence>
-            {toast && (
-              <motion.div
-                initial={{ y: -40, opacity: 0, scale: 0.9 }}
-                animate={{ y: 0, opacity: 1, scale: 1 }}
-                exit={{ y: -30, opacity: 0 }}
-                transition={{ type: "spring", stiffness: 300, damping: 22 }}
-                className="absolute left-1/2 top-4 z-[70] w-[88%] max-w-[360px] -translate-x-1/2 overflow-hidden rounded-2xl border border-white/40 p-3 shadow-2xl"
-                style={{ background: "linear-gradient(135deg, oklch(0.55 0.25 320 / 0.95), oklch(0.5 0.25 280 / 0.95))", backdropFilter: "blur(20px)" }}
-              >
-                <div className="flex items-center gap-3">
-                  <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white/25 text-2xl">{toast.emoji}</div>
-                  <div className="min-w-0 flex-1">
-                    <div className="font-display text-sm font-bold text-white">{toast.title}</div>
-                    <div className="text-[11px] text-white/90">{toast.msg}</div>
-                  </div>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+          <ToastNotification toast={toast} />
         </motion.div>
       )}
     </AnimatePresence>
@@ -937,6 +1019,11 @@ function useHabitsStore() {
 
 /* ---------------- HOME ---------------- */
 function Home_({ go, user }: { go: (s: Screen) => void; user: User | null }) {
+  const [toast, setToast] = useState<ToastType>(null);
+  const fire = (emoji: string, title: string, msg: string) => {
+    setToast({ emoji, title, msg });
+    setTimeout(() => setToast(null), 2800);
+  };
   const { habits, refresh } = useHabitsStore();
   const completed = habits.filter(h => h.done >= h.goal).length;
   const pct = Math.round((completed / Math.max(habits.length, 1)) * 100);
@@ -1151,6 +1238,8 @@ function Home_({ go, user }: { go: (s: Screen) => void; user: User | null }) {
           </button>
         )}
       </ModalSheet>
+      <AppFooter fire={fire} go={go} />
+      <ToastNotification toast={toast} />
     </motion.div>
   );
 }
@@ -1205,7 +1294,12 @@ function HabitCard({ h, onLog }: { h: Habit; onLog?: () => void }) {
 }
 
 /* ---------------- HABITS LIST ---------------- */
-function Habits_({}: { go: (s: Screen) => void }) {
+function Habits_({ go }: { go: (s: Screen) => void }) {
+  const [toast, setToast] = useState<ToastType>(null);
+  const fire = (emoji: string, title: string, msg: string) => {
+    setToast({ emoji, title, msg });
+    setTimeout(() => setToast(null), 2800);
+  };
   const { habits, refresh } = useHabitsStore();
   const [filter, setFilter] = useState<"all" | "active" | "done">("all");
   const [q, setQ] = useState("");
@@ -1233,6 +1327,8 @@ function Habits_({}: { go: (s: Screen) => void }) {
       <motion.div variants={stagger} className="mt-5 space-y-3">
         {visible.map((h) => <HabitCard key={h.id} h={h} onLog={refresh} />)}
       </motion.div>
+      <AppFooter fire={fire} go={go} />
+      <ToastNotification toast={toast} />
     </motion.div>
   );
 }
@@ -1361,7 +1457,12 @@ function classifyHabit(h: { name: string; icon: string; color: string }): "Healt
   return "Health";
 }
 
-function Stats_() {
+function Stats_({ go }: { go: (s: Screen) => void }) {
+  const [toast, setToast] = useState<ToastType>(null);
+  const fire = (emoji: string, title: string, msg: string) => {
+    setToast({ emoji, title, msg });
+    setTimeout(() => setToast(null), 2800);
+  };
   const [range, setRange] = useState<"W" | "M" | "Y">("W");
   const [year, setYear] = useState(2026);
   const [habits, setHabits] = useState<Habit[]>([]);
@@ -1860,6 +1961,8 @@ function Stats_() {
           More
         </div>
       </motion.div>
+      <AppFooter fire={fire} go={go} />
+      <ToastNotification toast={toast} />
     </motion.div>
   );
 }
@@ -1867,7 +1970,12 @@ function Stats_() {
 /* ---------------- CALENDAR ---------------- */
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 
-function Calendar_() {
+function Calendar_({ go }: { go: (s: Screen) => void }) {
+  const [toast, setToast] = useState<ToastType>(null);
+  const fire = (emoji: string, title: string, msg: string) => {
+    setToast({ emoji, title, msg });
+    setTimeout(() => setToast(null), 2800);
+  };
   const [month, setMonth] = useState(5); // June
   const [year, setYear] = useState(2026);
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -1975,13 +2083,20 @@ function Calendar_() {
           <motion.div initial={{ width: 0 }} animate={{ width: "87%" }} transition={{ duration: 1 }} className="h-full bg-white" />
         </div>
       </motion.div>
+      <AppFooter fire={fire} go={go} />
+      <ToastNotification toast={toast} />
     </motion.div>
   );
 }
 
 
 /* ---------------- ACHIEVEMENTS ---------------- */
-function Achievements_() {
+function Achievements_({ go }: { go: (s: Screen) => void }) {
+  const [toast, setToast] = useState<ToastType>(null);
+  const fire = (emoji: string, title: string, msg: string) => {
+    setToast({ emoji, title, msg });
+    setTimeout(() => setToast(null), 2800);
+  };
   const items = [
     { icon: Flame, name: "Fire starter", desc: "7-day streak", unlocked: true, progress: 100, c: "from-orange-400 to-pink-400", date: "May 28" },
     { icon: Star, name: "Rising star", desc: "30 perfect days", unlocked: true, progress: 100, c: "from-amber-400 to-yellow-300", date: "Jun 10" },
@@ -2077,6 +2192,8 @@ function Achievements_() {
           ))}
         </div>
       </motion.div>
+      <AppFooter fire={fire} go={go} />
+      <ToastNotification toast={toast} />
     </motion.div>
   );
 }
@@ -2085,7 +2202,12 @@ function Achievements_() {
 /* ---------------- COMMUNITY ---------------- */
 type Friend = { name: string; avatar: string; c: string; streak: number; xp: number; friends: boolean; history: number[]; topHabit: string };
 
-function Community_() {
+function Community_({ go }: { go: (s: Screen) => void }) {
+  const [toast, setToast] = useState<ToastType>(null);
+  const fire = (emoji: string, title: string, msg: string) => {
+    setToast({ emoji, title, msg });
+    setTimeout(() => setToast(null), 2800);
+  };
   const initial: Friend[] = [
     { name: "Maya", avatar: "🌸", c: "from-violet-500 to-fuchsia-400", streak: 32, xp: 3120, friends: true, history: [70, 80, 85, 88, 92, 94, 96], topHabit: "Meditation" },
     { name: "Jordan", avatar: "🏃", c: "from-emerald-400 to-teal-400", streak: 21, xp: 2210, friends: true, history: [50, 55, 60, 65, 72, 80, 78], topHabit: "Running" },
@@ -2245,6 +2367,8 @@ function Community_() {
           );
         })()}
       </ModalSheet>
+      <AppFooter fire={fire} go={go} />
+      <ToastNotification toast={toast} />
     </motion.div>
   );
 }
@@ -2252,6 +2376,11 @@ function Community_() {
 
 /* ---------------- NOTIFICATIONS ---------------- */
 function Notifications_({ go }: { go: (s: Screen) => void }) {
+  const [toast, setToast] = useState<ToastType>(null);
+  const fire = (emoji: string, title: string, msg: string) => {
+    setToast({ emoji, title, msg });
+    setTimeout(() => setToast(null), 2800);
+  };
   const [notes, setNotes] = useState<AppNotification[]>([]);
   useEffect(() => { api.notifications.list().then(setNotes).catch(()=>{}); }, []);
   const unreadCount = notes.filter(n => !n.is_read).length;
@@ -2314,6 +2443,8 @@ function Notifications_({ go }: { go: (s: Screen) => void }) {
           );
         })}
       </motion.div>
+      <AppFooter fire={fire} go={go} />
+      <ToastNotification toast={toast} />
     </motion.div>
   );
 }
@@ -2558,27 +2689,8 @@ function Profile_({ go, user, onUserUpdate }: { go: (s: Screen) => void; user: U
           <button onClick={() => fire("⭐", "Thank you!", "Your rating keeps Pulse glowing — much appreciated.")} className="w-full rounded-2xl bg-white/20 py-3 text-sm font-semibold text-white">Rate Pulse</button>
         </div>
       </ModalSheet>
-
-      <AnimatePresence>
-        {toast && (
-          <motion.div
-            initial={{ y: -40, opacity: 0, scale: 0.9 }}
-            animate={{ y: 0, opacity: 1, scale: 1 }}
-            exit={{ y: -30, opacity: 0 }}
-            transition={{ type: "spring", stiffness: 300, damping: 22 }}
-            className="absolute left-1/2 top-4 z-[60] w-[88%] max-w-[360px] -translate-x-1/2 overflow-hidden rounded-2xl border border-white/40 p-3 shadow-2xl"
-            style={{ background: "linear-gradient(135deg, oklch(0.55 0.25 320 / 0.92), oklch(0.5 0.25 280 / 0.92))", backdropFilter: "blur(20px)" }}
-          >
-            <div className="flex items-center gap-3">
-              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white/25 text-2xl">{toast.emoji}</div>
-              <div className="min-w-0 flex-1">
-                <div className="font-display text-sm font-bold text-white">{toast.title}</div>
-                <div className="text-[11px] text-white/90">{toast.msg}</div>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <AppFooter fire={fire} go={go} />
+      <ToastNotification toast={toast} />
     </motion.div>
   );
 }
@@ -2710,10 +2822,10 @@ export default function PulseApp() {
             {screen === "home"         && <motion.div key="home" {...appScreenVariants} className="flex h-full flex-col"><Home_ go={go} user={user} /></motion.div>}
             {screen === "habits"       && <motion.div key="habits" {...appScreenVariants} className="flex h-full flex-col"><Habits_ go={go} /></motion.div>}
             {screen === "add"          && <motion.div key="add" {...appScreenVariants} className="flex h-full flex-col"><AddHabit go={go} /></motion.div>}
-            {screen === "stats"        && <motion.div key="stats" {...appScreenVariants} className="flex h-full flex-col"><Stats_ /></motion.div>}
-            {screen === "calendar"     && <motion.div key="cal" {...appScreenVariants} className="flex h-full flex-col"><Calendar_ /></motion.div>}
-            {screen === "achievements" && <motion.div key="ach" {...appScreenVariants} className="flex h-full flex-col"><Achievements_ /></motion.div>}
-            {screen === "community"    && <motion.div key="com" {...appScreenVariants} className="flex h-full flex-col"><Community_ /></motion.div>}
+            {screen === "stats"        && <motion.div key="stats" {...appScreenVariants} className="flex h-full flex-col"><Stats_ go={go} /></motion.div>}
+            {screen === "calendar"     && <motion.div key="cal" {...appScreenVariants} className="flex h-full flex-col"><Calendar_ go={go} /></motion.div>}
+            {screen === "achievements" && <motion.div key="ach" {...appScreenVariants} className="flex h-full flex-col"><Achievements_ go={go} /></motion.div>}
+            {screen === "community"    && <motion.div key="com" {...appScreenVariants} className="flex h-full flex-col"><Community_ go={go} /></motion.div>}
             {screen === "notifications"&& <motion.div key="not" {...appScreenVariants} className="flex h-full flex-col"><Notifications_ go={go} /></motion.div>}
             {screen === "profile"      && <motion.div key="pro" {...appScreenVariants} className="flex h-full flex-col"><Profile_ go={go} user={user} onUserUpdate={handleUser} /></motion.div>}
             {screen === "edit-profile" && <motion.div key="edit" {...appScreenVariants} className="flex h-full flex-col"><EditProfile go={go} user={user} onUserUpdate={handleUser} /></motion.div>}
