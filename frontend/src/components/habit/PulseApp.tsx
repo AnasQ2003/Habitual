@@ -722,7 +722,7 @@ function BottomNav({ active, go }: { active: Screen; go: (s: Screen) => void }) 
 }
 
 /* ---------------- DRAWER (radial reveal from top-left) ---------------- */
-function Drawer({ open, close, go, logout }: { open: boolean; close: () => void; go: (s: Screen) => void; logout: () => void }) {
+function Drawer({ open, close, go, logout, user }: { open: boolean; close: () => void; go: (s: Screen) => void; logout: () => void; user: User | null }) {
   const [modal, setModal] = useState<null | "settings" | "appearance" | "help">(null);
   const { theme, setTheme, dark, setDark } = useTheme();
   const [notif, setNotif] = useState(true);
@@ -770,10 +770,10 @@ function Drawer({ open, close, go, logout }: { open: boolean; close: () => void;
 
             <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }} className="mt-8 rounded-3xl bg-aurora p-5 shadow-glow">
               <div className="flex items-center gap-3">
-                <div className="grid h-14 w-14 place-items-center rounded-2xl bg-white/20 text-2xl">🌟</div>
+                <div className="grid h-14 w-14 place-items-center rounded-2xl bg-white/20 text-2xl" style={{ fontFamily: 'Segoe UI Emoji, Apple Color Emoji, Noto Color Emoji, sans-serif' }}>{user?.avatar ?? '🌟'}</div>
                 <div>
-                  <div className="font-display text-lg font-bold text-white">Hey, Alex!</div>
-                  <div className="text-sm text-white/80">14-day streak · keep going</div>
+                  <div className="font-display text-lg font-bold text-white">Hey, {user?.name ?? 'Friend'}!</div>
+                  <div className="text-sm text-white/80">{user?.streak ?? 0}-day streak · keep going</div>
                 </div>
               </div>
             </motion.div>
@@ -956,8 +956,8 @@ function Home_({ go, user }: { go: (s: Screen) => void; user: User | null }) {
   return (
     <motion.div variants={stagger} initial="initial" animate="animate" className="flex-1 overflow-y-auto scrollbar-hide px-5 pt-5 pb-4">
       <motion.div variants={item} className="mt-2">
-        <p className="text-sm text-white/80">Tuesday, June 16</p>
-        <h2 className="font-display text-3xl font-bold text-white">Good morning, Alex ✨</h2>
+        <p className="text-sm text-white/80">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</p>
+        <h2 className="font-display text-3xl font-bold text-white">Good morning, {user?.name?.split(' ')[0] ?? 'Friend'} ✨</h2>
       </motion.div>
 
       <motion.div variants={item} className="mt-5 overflow-hidden rounded-3xl bg-aurora p-5 shadow-glow">
@@ -1802,7 +1802,7 @@ function Achievements_() {
         <div className="mt-3 space-y-2">
           {[
             { rank: 1, name: "Maya", xp: 3120, you: false, m: "🌸" },
-            { rank: 2, name: "Alex (You)", xp: 2400, you: true, m: "🌟" },
+            { rank: 2, name: "You", xp: 2400, you: true, m: "🌟" },
             { rank: 3, name: "Jordan", xp: 2210, you: false, m: "🏃" },
             { rank: 4, name: "Sam", xp: 1950, you: false, m: "📚" },
           ].map(r => (
@@ -2097,6 +2097,7 @@ function ModalSheet({ open, onClose, title, children }: { open: boolean; onClose
 
 function Profile_({ go, user, onUserUpdate }: { go: (s: Screen) => void; user: User | null; onUserUpdate: (u: User) => void }) {
   const [avatar, setAvatar] = useState(user?.avatar ?? "🌟");
+  useEffect(() => { if (user?.avatar) setAvatar(user.avatar); }, [user?.avatar]);
   const [modal, setModal] = useState<null | "account" | "appearance" | "language" | "sounds" | "help">(null);
   const [lang, setLang] = useState(user?.language ?? "English");
   const { theme, setTheme, dark, setDark } = useTheme();
@@ -2125,9 +2126,9 @@ function Profile_({ go, user, onUserUpdate }: { go: (s: Screen) => void; user: U
           <div className="absolute -bottom-10 -right-10 h-40 w-40 rounded-full bg-white/20 blur-2xl" />
         </div>
         <div className="relative">
-          <div className="mx-auto grid h-24 w-24 place-items-center rounded-3xl bg-white/25 text-5xl backdrop-blur">{avatar}</div>
-          <div className="mt-3 font-display text-2xl font-bold text-white">{user?.name ?? "Alex Morgan"}</div>
-          <div className="text-sm text-white/80">@{(user?.name ?? "alex").toLowerCase().replace(/ /g,".")} · Habit Hero · {user?.xp ?? 0} XP</div>
+          <div className="mx-auto grid h-24 w-24 place-items-center rounded-3xl bg-white/25 text-5xl backdrop-blur" style={{ fontFamily: 'Segoe UI Emoji, Apple Color Emoji, Noto Color Emoji, sans-serif' }}>{avatar}</div>
+          <div className="mt-3 font-display text-2xl font-bold text-white">{user?.name ?? "User"}</div>
+          <div className="text-sm text-white/80">@{(user?.name ?? "user").toLowerCase().replace(/ /g,".")} · Habit Hero · {user?.xp ?? 0} XP</div>
           <button onClick={() => go("edit-profile")} className="mt-4 inline-flex items-center gap-2 rounded-full bg-white/25 px-4 py-2 text-sm font-semibold text-white backdrop-blur transition hover:bg-white/35">
             <Edit3 className="h-4 w-4" /> Edit profile
           </button>
@@ -2281,6 +2282,7 @@ function Profile_({ go, user, onUserUpdate }: { go: (s: Screen) => void; user: U
 
 function EditProfile({ go, user, onUserUpdate }: { go: (s: Screen) => void; user: User | null; onUserUpdate: (u: User) => void }) {
   const [avatar, setAvatar] = useState(user?.avatar ?? "🌟");
+  useEffect(() => { if (user?.avatar) setAvatar(user.avatar); }, [user?.avatar]);
   const [picker, setPicker] = useState(false);
   const [nameV, setNameV] = useState(user?.name ?? "");
   const [bioV, setBioV] = useState(user?.bio ?? "");
@@ -2301,7 +2303,7 @@ function EditProfile({ go, user, onUserUpdate }: { go: (s: Screen) => void; user
     <motion.div variants={stagger} initial="initial" animate="animate" className="relative flex-1 overflow-y-auto scrollbar-hide px-5 pt-5 pb-4">
       <motion.div variants={item} className="flex flex-col items-center pt-4">
         <div className="relative">
-          <div className="grid h-28 w-28 place-items-center rounded-[2rem] bg-aurora text-5xl shadow-glow">{avatar}</div>
+          <div className="grid h-28 w-28 place-items-center rounded-[2rem] bg-aurora text-5xl shadow-glow" style={{ fontFamily: 'Segoe UI Emoji, Apple Color Emoji, Noto Color Emoji, sans-serif' }}>{avatar}</div>
           <button onClick={() => setPicker(true)} className="absolute -bottom-2 -right-2 grid h-10 w-10 place-items-center rounded-2xl bg-mint text-background shadow-mint">
             <Camera className="h-4.5 w-4.5" strokeWidth={2.5} />
           </button>
@@ -2339,7 +2341,7 @@ function EditProfile({ go, user, onUserUpdate }: { go: (s: Screen) => void; user
                 <h3 className="font-display text-lg font-bold text-white">Choose your avatar</h3>
                 <button onClick={() => setPicker(false)} className="grid h-9 w-9 place-items-center rounded-full bg-white/20 text-white"><X className="h-4 w-4" /></button>
               </div>
-              <div className="grid grid-cols-4 gap-3">
+              <div className="grid grid-cols-4 gap-3" style={{ fontFamily: 'Segoe UI Emoji, Apple Color Emoji, Noto Color Emoji, sans-serif' }}>
                 {AVATARS.map(a => (
                   <button key={a} onClick={() => { setAvatar(a); setPicker(false); }} className={`grid aspect-square place-items-center rounded-2xl text-3xl transition ${avatar === a ? "bg-aurora shadow-glow scale-105" : "bg-white/15 hover:bg-white/25"}`}>
                     {a}
@@ -2422,6 +2424,7 @@ export default function PulseApp() {
           close={() => setDrawerOpen(false)}
           go={go}
           logout={handleLogout}
+          user={user}
         />
       </PhoneFrame>
     </div>
