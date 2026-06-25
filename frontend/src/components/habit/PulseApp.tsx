@@ -2366,12 +2366,32 @@ function Profile_({ go, user, onUserUpdate }: { go: (s: Screen) => void; user: U
   const [sound, setSound] = useState(true);
   const [haptic, setHaptic] = useState(true);
   const [twoFA, setTwoFA] = useState(false);
+  const [emailNotif, setEmailNotif] = useState(true);
+  const [publicProfile, setPublicProfile] = useState(true);
   const [toast, setToast] = useState<{ emoji: string; title: string; msg: string } | null>(null);
   const fire = (emoji: string, title: string, msg: string) => { setToast({ emoji, title, msg }); setTimeout(() => setToast(null), 2800); };
   // persist theme/dark changes to backend
   const handleThemeChange = (t: ThemeId) => { setTheme(t); api.profile.update({ theme: t }).catch(()=>{}); };
   const handleDarkChange = (d: boolean) => { setDark(d); api.profile.update({ dark_mode: d }).catch(()=>{}); };
-  const handleLangChange = (l: string) => { setLang(l); api.profile.update({ language: l }).catch(()=>{}); };
+  
+  const handleLangChange = (l: string) => {
+    setLang(l);
+    api.profile.update({ language: l }).catch(()=>{});
+    fire("🌐", "Language Updated", `Preference saved to profile! Translation support for ${l} is in progress.`);
+  };
+
+  const handleToggle2FA = (v: boolean) => {
+    setTwoFA(v);
+    fire("🔐", "Two-Factor Auth", "This feature is in progress. Settings updated locally!");
+  };
+  const handleToggleEmail = (v: boolean) => {
+    setEmailNotif(v);
+    fire("✉️", "Email Preferences", "Email digests are under construction. Preference saved locally!");
+  };
+  const handleTogglePublic = (v: boolean) => {
+    setPublicProfile(v);
+    fire("👥", "Privacy Settings", "Public profile visibility toggled. Feed interactions are in development!");
+  };
 
 
   const Toggle = ({ on, set }: { on: boolean; set: (v: boolean) => void }) => (
@@ -2408,11 +2428,11 @@ function Profile_({ go, user, onUserUpdate }: { go: (s: Screen) => void; user: U
 
       <motion.div variants={item} className="mt-5 space-y-2">
         {[
-          { icon: Settings, label: "Account settings", onClick: () => fire("⚙️", "Account Settings", "This feature is currently in development. You'll be able to manage security and preferences here soon!") },
+          { icon: Settings, label: "Account settings", id: "account" as const },
           { icon: Bell, label: "Notifications", onClick: () => go("notifications") },
           { icon: Palette, label: "Appearance", id: "appearance" as const, val: THEMES.find(t => t.id === theme)?.label },
-          { icon: Globe, label: "Language", onClick: () => fire("🌐", "Language Settings", "Localization is in progress! Additional languages will be available in the next release.") },
-          { icon: Volume2, label: "Sounds & haptics", onClick: () => fire("🔊", "Sounds & Haptics", "Audio settings are being finalized. Custom completion sounds and haptics are coming soon!") },
+          { icon: Globe, label: "Language", id: "language" as const, val: lang },
+          { icon: Volume2, label: "Sounds & haptics", id: "sounds" as const, val: sound ? "On" : "Off" },
           { icon: HelpCircle, label: "Help center", id: "help" as const },
         ].map((m, i) => (
           <button key={i} onClick={(m as any).onClick ?? (() => (m as any).id && setModal((m as any).id))} className="group flex w-full items-center justify-between rounded-2xl border border-white/25 bg-white/12 px-4 py-3.5 text-left transition hover:bg-white/18">
@@ -2430,10 +2450,17 @@ function Profile_({ go, user, onUserUpdate }: { go: (s: Screen) => void; user: U
       {/* Modals */}
       <ModalSheet open={modal === "account"} onClose={() => setModal(null)} title="Account settings">
         <div className="space-y-3">
+          <div className="flex items-center gap-2 rounded-2xl border border-amber-400/30 bg-amber-400/10 px-3 py-2.5">
+            <span className="text-base">🚧</span>
+            <div>
+              <div className="text-xs font-bold text-amber-300">Work in progress</div>
+              <div className="text-[11px] text-white/70">Toggles save locally. Full account management features are coming soon!</div>
+            </div>
+          </div>
           {[
-            { l: "Two-factor authentication", d: "Add an extra layer of security", v: twoFA, set: setTwoFA },
-            { l: "Email notifications", d: "Weekly summary digest", v: true, set: () => {} },
-            { l: "Public profile", d: "Show your streaks in community", v: true, set: () => {} },
+            { l: "Two-factor authentication", d: "Add an extra layer of security", v: twoFA, set: handleToggle2FA },
+            { l: "Email notifications", d: "Weekly summary digest", v: emailNotif, set: handleToggleEmail },
+            { l: "Public profile", d: "Show your streaks in community", v: publicProfile, set: handleTogglePublic },
           ].map((s, i) => (
             <div key={i} className="flex items-center justify-between rounded-2xl border border-white/25 bg-white/10 p-3">
               <div><div className="text-sm font-semibold text-white">{s.l}</div><div className="text-[11px] text-white/70">{s.d}</div></div>
@@ -2441,8 +2468,8 @@ function Profile_({ go, user, onUserUpdate }: { go: (s: Screen) => void; user: U
             </div>
           ))}
           <button onClick={() => fire("🚧", "Change Password", "Change password functionality is currently in development. Secure password management is coming soon!")} className="w-full rounded-2xl bg-white/20 py-3 text-sm font-semibold text-white">Change password</button>
-          <button onClick={() => fire("📦", "Export started", "We're packaging your data — you'll get a download link by email.")} className="w-full rounded-2xl bg-white/20 py-3 text-sm font-semibold text-white">Export my data</button>
-          <button onClick={() => fire("⚠️", "Are you sure?", "Tap again within 5 seconds to confirm permanent deletion.")} className="w-full rounded-2xl border border-pink/40 bg-pink/15 py-3 text-sm font-semibold text-pink">Delete account</button>
+          <button onClick={() => fire("🚧", "Export Data", "Export service is under development. Real data packaging will be available soon!")} className="w-full rounded-2xl bg-white/20 py-3 text-sm font-semibold text-white">Export my data</button>
+          <button onClick={() => fire("🚧", "Delete Account", "Self-service account deletion is in progress. Please contact support for account removal requests.")} className="w-full rounded-2xl border border-pink/40 bg-pink/15 py-3 text-sm font-semibold text-pink">Delete account</button>
 
         </div>
       </ModalSheet>
@@ -2464,6 +2491,13 @@ function Profile_({ go, user, onUserUpdate }: { go: (s: Screen) => void; user: U
       </ModalSheet>
 
       <ModalSheet open={modal === "language"} onClose={() => setModal(null)} title="Language">
+        <div className="mb-3 flex items-center gap-2 rounded-2xl border border-amber-400/30 bg-amber-400/10 px-3 py-2.5">
+          <span className="text-base">🚧</span>
+          <div>
+            <div className="text-xs font-bold text-amber-300">Work in progress</div>
+            <div className="text-[11px] text-white/70">Language preference saves to your profile. Full translation support is coming in the next release.</div>
+          </div>
+        </div>
         <div className="space-y-2">
           {LANGUAGES.map(l => (
             <button key={l.code} onClick={() => { handleLangChange(l.label); setModal(null); }} className={`flex w-full items-center justify-between rounded-2xl border p-3 text-left transition ${lang === l.label ? "border-white bg-white/25" : "border-white/25 bg-white/10"}`}>
@@ -2479,19 +2513,26 @@ function Profile_({ go, user, onUserUpdate }: { go: (s: Screen) => void; user: U
 
       <ModalSheet open={modal === "sounds"} onClose={() => setModal(null)} title="Sounds & haptics">
         <div className="space-y-3">
+          <div className="flex items-center gap-2 rounded-2xl border border-amber-400/30 bg-amber-400/10 px-3 py-2.5">
+            <span className="text-base">🚧</span>
+            <div>
+              <div className="text-xs font-bold text-amber-300">Work in progress</div>
+              <div className="text-[11px] text-white/70">Toggles save locally. Real audio & haptic engine is coming soon!</div>
+            </div>
+          </div>
           <div className="flex items-center justify-between rounded-2xl border border-white/25 bg-white/10 p-3">
             <div><div className="text-sm font-semibold text-white">Sound effects</div><div className="text-[11px] text-white/70">Play on habit completion</div></div>
-            <Toggle on={sound} set={setSound} />
+            <Toggle on={sound} set={(v) => { setSound(v); fire("🔊", "Sound Effects", v ? "Sound effects enabled locally." : "Sound effects disabled locally."); }} />
           </div>
           <div className="flex items-center justify-between rounded-2xl border border-white/25 bg-white/10 p-3">
             <div><div className="text-sm font-semibold text-white">Haptic feedback</div><div className="text-[11px] text-white/70">Vibrate on interaction</div></div>
-            <Toggle on={haptic} set={setHaptic} />
+            <Toggle on={haptic} set={(v) => { setHaptic(v); fire("📳", "Haptic Feedback", v ? "Haptics enabled locally." : "Haptics disabled locally."); }} />
           </div>
           <div className="rounded-2xl border border-white/25 bg-white/10 p-3">
             <div className="text-sm font-semibold text-white">Notification sound</div>
             <div className="mt-2 flex gap-2">
-              {["Chime","Pulse","Bell","Off"].map((s, i) => (
-                <button key={s} className={`flex-1 rounded-xl py-2 text-xs font-semibold ${i === 0 ? "bg-white text-[oklch(0.35_0.18_320)]" : "bg-white/15 text-white"}`}>{s}</button>
+              {["Chime","Pulse","Bell","Off"].map((s) => (
+                <button key={s} onClick={() => fire("🔔", "Notification Sound", `"${s}" selected locally — custom sounds are in development.`)} className="flex-1 rounded-xl py-2 text-xs font-semibold bg-white/15 text-white hover:bg-white/25 transition">{s}</button>
               ))}
             </div>
           </div>
