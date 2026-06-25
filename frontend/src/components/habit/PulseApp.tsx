@@ -832,7 +832,7 @@ function Drawer({ open, close, go, logout, user }: { open: boolean; close: () =>
                   <Toggle on={s.v} set={s.set} />
                 </div>
               ))}
-              <button onClick={() => fire("🔐", "Password reset sent", "Check your inbox for a magic reset link.")} className="w-full rounded-2xl bg-white/20 py-3 text-sm font-semibold text-white">Change password</button>
+              <button onClick={() => fire("🚧", "Change Password", "Change password functionality is currently in development. Secure password management is coming soon!")} className="w-full rounded-2xl bg-white/20 py-3 text-sm font-semibold text-white">Change password</button>
               <button onClick={() => fire("⚠️", "Are you sure?", "Tap again within 5 seconds to confirm permanent deletion.")} className="w-full rounded-2xl border border-pink/40 bg-pink/15 py-3 text-sm font-semibold text-pink">Delete account</button>
             </div>
           </ModalSheet>
@@ -1343,25 +1343,290 @@ function AddHabit({ go }: { go: (s: Screen) => void }) {
 }
 
 /* ---------------- STATS ---------------- */
+function classifyHabit(h: { name: string; icon: string; color: string }): "Health" | "Mind" | "Body" | "Sleep" {
+  const name = h.name.toLowerCase();
+  const icon = h.icon.toLowerCase();
+  const color = h.color.toLowerCase();
+
+  if (icon === 'moon' || name.includes('sleep') || name.includes('bed') || color.includes('indigo') || color.includes('blue')) {
+    return "Sleep";
+  }
+  if (icon === 'dumbbell' || name.includes('workout') || name.includes('gym') || name.includes('run') || name.includes('exercise') || color.includes('pink') || color.includes('rose')) {
+    if (name.includes('gratitude') || icon === 'heart') return "Mind";
+    return "Body";
+  }
+  if (icon === 'brain' || icon === 'bookopen' || name.includes('read') || name.includes('meditate') || name.includes('mind') || color.includes('violet') || color.includes('fuchsia') || color.includes('amber') || color.includes('orange')) {
+    return "Mind";
+  }
+  return "Health";
+}
+
 function Stats_() {
   const [range, setRange] = useState<"W" | "M" | "Y">("W");
   const [year, setYear] = useState(2026);
-  // Year-aware deterministic data so changing year/range updates every chart
-  const { data, heroPct, delta } = useMemo(() => {
-    const seed = year * 7 + (range === "W" ? 1 : range === "M" ? 2 : 3);
-    const len = range === "W" ? 7 : range === "M" ? 10 : 12;
-    const arr = Array.from({ length: len }, (_, i) => {
-      const v = Math.sin((seed + i) * 1.13) * 22 + Math.cos((seed - i) * 0.7) * 14 + 70;
-      return Math.max(20, Math.min(100, Math.round(v)));
+  const [habits, setHabits] = useState<Habit[]>([]);
+  const [logs, setLogs] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const [hList, sLogs] = await Promise.all([
+          api.habits.list(),
+          api.habits.stats(),
+        ]);
+        if (active) {
+          setHabits(hList);
+          setLogs(sLogs);
+        }
+      } catch (err) {
+        console.error("Failed to fetch stats data:", err);
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+    fetchData();
+    return () => { active = false; };
+  }, []);
+
+  const { data, heroPct, delta, donutData, kpi, topHabits, heatmapData } = useMemo(() => {
+    const now = new Date();
+    let refDate = now;
+    if (year !== now.getFullYear()) {
+      if (year < now.getFullYear()) {
+        refDate = new Date(year, 11, 31);
+      } else {
+        refDate = new Date(year, now.getMonth(), now.getDate());
+      }
+    }
+
+    let dates: string[] = [];
+    let prevDates: string[] = [];
+
+    if (range === "W") {
+      dates = Array.from({ length: 7 }, (_, i) => {
+        const d = new Date(refDate);
+        d.setDate(refDate.getDate() - (6 - i));
+        return d.toISOString().slice(0, 10);
+      });
+      prevDates = Array.from({ length: 7 }, (_, i) => {
+        const d = new Date(refDate);
+        d.setDate(refDate.getDate() - 7 - (6 - i));
+        return d.toISOString().slice(0, 10);
+      });
+    } else if (range === "M") {
+      dates = Array.from({ length: 30 }, (_, i) => {
+        const d = new Date(refDate);
+        d.setDate(refDate.getDate() - (29 - i));
+        return d.toISOString().slice(0, 10);
+      });
+      prevDates = Array.from({ length: 30 }, (_, i) => {
+        const d = new Date(refDate);
+        d.setDate(refDate.getDate() - 30 - (29 - i));
+        return d.toISOString().slice(0, 10);
+      });
+    }
+
+    const calcDailyRates = (targetDates: string[]) => {
+      if (habits.length === 0) return targetDates.map(() => 0);
+      return targetDates.map(dateStr => {
+        const dayLogs = logs.filter(l => l.log_date === dateStr);
+        if (dayLogs.length === 0) return 0;
+        const completedCount = dayLogs.filter(l => l.completed === 1).length;
+        return Math.round((completedCount / habits.length) * 100);
+      });
+    };
+
+    let chartData: number[] = [];
+    let currentPeriodRates: number[] = [];
+    let prevPeriodRates: number[] = [];
+
+    if (range === "W") {
+      currentPeriodRates = calcDailyRates(dates);
+      prevPeriodRates = calcDailyRates(prevDates);
+      chartData = currentPeriodRates;
+    } else if (range === "M") {
+      currentPeriodRates = calcDailyRates(dates);
+      prevPeriodRates = calcDailyRates(prevDates);
+      chartData = Array.from({ length: 10 }, (_, i) => {
+        const chunk = currentPeriodRates.slice(i * 3, i * 3 + 3);
+        const sum = chunk.reduce((a, b) => a + b, 0);
+        return Math.round(sum / chunk.length);
+      });
+    } else if (range === "Y") {
+      currentPeriodRates = Array.from({ length: 12 }, (_, monthIdx) => {
+        const prefix = `${year}-${String(monthIdx + 1).padStart(2, "0")}`;
+        const monthLogs = logs.filter(l => l.log_date.startsWith(prefix));
+        if (monthLogs.length === 0 || habits.length === 0) return 0;
+        const daysInMonth = new Date(year, monthIdx + 1, 0).getDate();
+        const completedCount = monthLogs.filter(l => l.completed === 1).length;
+        return Math.round((completedCount / (habits.length * daysInMonth)) * 100);
+      });
+
+      prevPeriodRates = Array.from({ length: 12 }, (_, monthIdx) => {
+        const prefix = `${year - 1}-${String(monthIdx + 1).padStart(2, "0")}`;
+        const monthLogs = logs.filter(l => l.log_date.startsWith(prefix));
+        if (monthLogs.length === 0 || habits.length === 0) return 0;
+        const daysInMonth = new Date(year - 1, monthIdx + 1, 0).getDate();
+        const completedCount = monthLogs.filter(l => l.completed === 1).length;
+        return Math.round((completedCount / (habits.length * daysInMonth)) * 100);
+      });
+      chartData = currentPeriodRates;
+    }
+
+    const currentAvg = currentPeriodRates.length > 0 
+      ? Math.round(currentPeriodRates.reduce((a, b) => a + b, 0) / currentPeriodRates.length)
+      : 0;
+    const prevAvg = prevPeriodRates.length > 0
+      ? Math.round(prevPeriodRates.reduce((a, b) => a + b, 0) / prevPeriodRates.length)
+      : 0;
+    
+    const calculatedHeroPct = currentAvg;
+    const calculatedDelta = currentAvg - prevAvg;
+
+    const categoriesCount = { Health: 0, Mind: 0, Body: 0, Sleep: 0 };
+    habits.forEach(h => {
+      const cat = classifyHabit(h);
+      categoriesCount[cat]++;
     });
-    const avg = Math.round(arr.reduce((a, b) => a + b, 0) / arr.length);
-    const prev = Math.round(50 + ((seed * 13) % 35));
-    return { data: arr, heroPct: avg, delta: avg - prev };
-  }, [range, year]);
+    const totalHabitsCount = habits.length;
+    const donut = [
+      { v: totalHabitsCount ? Math.round((categoriesCount.Health / totalHabitsCount) * 100) : 0, c: "oklch(0.78 0.18 30)", o: 0 },
+      { v: totalHabitsCount ? Math.round((categoriesCount.Mind / totalHabitsCount) * 100) : 0, c: "oklch(0.74 0.25 350)", o: 0 },
+      { v: totalHabitsCount ? Math.round((categoriesCount.Body / totalHabitsCount) * 100) : 0, c: "oklch(0.85 0.18 170)", o: 0 },
+      { v: totalHabitsCount ? Math.round((categoriesCount.Sleep / totalHabitsCount) * 100) : 0, c: "oklch(0.78 0.15 230)", o: 0 },
+    ];
+    let accumulatedOffset = 0;
+    donut.forEach(d => {
+      d.o = accumulatedOffset;
+      accumulatedOffset += d.v;
+    });
+
+    const bestStreak = habits.length > 0 ? Math.max(...habits.map(h => h.streak), 0) : 0;
+    
+    let periodLogs: any[] = [];
+    if (range === "W") {
+      periodLogs = logs.filter(l => dates.includes(l.log_date));
+    } else if (range === "M") {
+      periodLogs = logs.filter(l => dates.includes(l.log_date));
+    } else {
+      periodLogs = logs.filter(l => l.log_date.startsWith(String(year)));
+    }
+    const totalCompletions = periodLogs.filter(l => l.completed === 1).length;
+
+    let perfectDays = 0;
+    if (range === "W" || range === "M") {
+      dates.forEach(dateStr => {
+        const dayLogs = logs.filter(l => l.log_date === dateStr);
+        if (dayLogs.length > 0 && dayLogs.length === habits.length && dayLogs.every(l => l.completed === 1)) {
+          perfectDays++;
+        }
+      });
+    } else {
+      const uniqueDates = Array.from(new Set(logs.filter(l => l.log_date.startsWith(String(year))).map(l => l.log_date)));
+      uniqueDates.forEach(dateStr => {
+        const dayLogs = logs.filter(l => l.log_date === dateStr);
+        if (dayLogs.length > 0 && dayLogs.length === habits.length && dayLogs.every(l => l.completed === 1)) {
+          perfectDays++;
+        }
+      });
+    }
+
+    let prevPeriodLogs: any[] = [];
+    if (range === "W") {
+      prevPeriodLogs = logs.filter(l => prevDates.includes(l.log_date));
+    } else if (range === "M") {
+      prevPeriodLogs = logs.filter(l => prevDates.includes(l.log_date));
+    } else {
+      prevPeriodLogs = logs.filter(l => l.log_date.startsWith(String(year - 1)));
+    }
+    const prevCompletions = prevPeriodLogs.filter(l => l.completed === 1).length;
+
+    let prevPerfectDays = 0;
+    if (range === "W" || range === "M") {
+      prevDates.forEach(dateStr => {
+        const dayLogs = logs.filter(l => l.log_date === dateStr);
+        if (dayLogs.length > 0 && dayLogs.length === habits.length && dayLogs.every(l => l.completed === 1)) {
+          prevPerfectDays++;
+        }
+      });
+    } else {
+      const uniqueDates = Array.from(new Set(logs.filter(l => l.log_date.startsWith(String(year - 1))).map(l => l.log_date)));
+      uniqueDates.forEach(dateStr => {
+        const dayLogs = logs.filter(l => l.log_date === dateStr);
+        if (dayLogs.length > 0 && dayLogs.length === habits.length && dayLogs.every(l => l.completed === 1)) {
+          prevPerfectDays++;
+        }
+      });
+    }
+
+    const completionsDelta = totalCompletions - prevCompletions;
+    const perfectDelta = perfectDays - prevPerfectDays;
+
+    const top = habits.map(h => {
+      const hLogs = periodLogs.filter(l => l.habit_id === h.id);
+      const hPrevLogs = prevPeriodLogs.filter(l => l.habit_id === h.id);
+      const denominator = range === "W" ? 7 : range === "M" ? 30 : 365;
+      const currentPct = hLogs.length > 0 ? Math.round((hLogs.filter(l => l.completed === 1).length / denominator) * 100) : 0;
+      const prevPct = hPrevLogs.length > 0 ? Math.round((hPrevLogs.filter(l => l.completed === 1).length / denominator) * 100) : 0;
+      return {
+        ...h,
+        pct: Math.min(100, currentPct),
+        delta: currentPct - prevPct,
+      };
+    })
+    .sort((a, b) => b.pct - a.pct)
+    .slice(0, 5);
+
+    const heatmap = Array.from({ length: 12 * 7 }, (_, i) => {
+      const d = new Date(refDate);
+      d.setDate(refDate.getDate() - (83 - i));
+      const dateStr = d.toISOString().slice(0, 10);
+      const count = logs.filter(l => l.log_date === dateStr && l.completed === 1).length;
+      return {
+        dateStr,
+        dayName: ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][d.getDay()],
+        weekIdx: Math.floor(i / 7),
+        count,
+      };
+    });
+
+    return {
+      data: chartData,
+      heroPct: calculatedHeroPct,
+      delta: calculatedDelta,
+      donutData: donut,
+      kpi: {
+        bestStreak,
+        totalCompletions,
+        completionsDelta,
+        perfectDays,
+        perfectDelta,
+      },
+      topHabits: top,
+      heatmapData: heatmap,
+    };
+  }, [range, year, habits, logs]);
+
   const labels = { W: ["M","T","W","T","F","S","S"], M: ["1","4","7","10","13","16","19","22","25","28"], Y: ["J","F","M","A","M","J","J","A","S","O","N","D"] }[range];
-  // line chart points
   const w = 320, h = 90;
-  const points = data.map((v, i) => `${(i / (data.length - 1)) * w},${h - (v / 100) * h}`).join(" ");
+  const points = data.length > 0 ? data.map((v, i) => `${(i / (data.length - 1)) * w},${h - (v / 100) * h}`).join(" ") : `0,${h} ${w},${h}`;
+  const maxHeatmapCount = Math.max(...heatmapData.map(c => c.count), 1);
+
+  if (loading) {
+    return (
+      <div className="flex flex-1 flex-col items-center justify-center text-white">
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+          className="h-10 w-10 rounded-full border-4 border-t-mint border-white/20"
+        />
+        <p className="mt-3 text-sm font-semibold text-white/80">Loading statistics...</p>
+      </div>
+    );
+  }
 
   return (
     <motion.div variants={stagger} initial="initial" animate="animate" className="flex-1 overflow-y-auto scrollbar-hide px-5 pt-5 pb-4">
@@ -1474,12 +1739,7 @@ function Stats_() {
           <div className="text-xs text-white/80">Habit mix</div>
           <div className="relative mx-auto mt-2 h-28 w-28">
             <svg viewBox="0 0 36 36" className="-rotate-90">
-              {[
-                { v: 35, c: "oklch(0.78 0.18 30)", o: 0 },
-                { v: 25, c: "oklch(0.74 0.25 350)", o: 35 },
-                { v: 22, c: "oklch(0.85 0.18 170)", o: 60 },
-                { v: 18, c: "oklch(0.78 0.15 230)", o: 82 },
-              ].map((s, i) => (
+              {donutData.map((s, i) => (
                 <motion.circle
                   key={i} cx="18" cy="18" r="15.9" fill="none" stroke={s.c} strokeWidth="4"
                   strokeDasharray={`${s.v} 100`} strokeDashoffset={-s.o}
@@ -1490,7 +1750,7 @@ function Stats_() {
             </svg>
             <div className="absolute inset-0 grid place-items-center">
               <div className="text-center">
-                <div className="font-display text-xl font-bold text-white">6</div>
+                <div className="font-display text-xl font-bold text-white">{habits.length}</div>
                 <div className="text-[9px] text-white/80">habits</div>
               </div>
             </div>
@@ -1505,9 +1765,9 @@ function Stats_() {
 
         <div className="space-y-3">
           {[
-            { label: "Best streak", val: "28d", delta: "+4d", icon: Flame, c: "from-orange-400 to-pink-400" },
-            { label: "Total done", val: "412", delta: "+38", icon: Check, c: "from-emerald-400 to-teal-400" },
-            { label: "Perfect days", val: "37", delta: "+9", icon: Star, c: "from-amber-400 to-yellow-300" },
+            { label: "Best streak", val: `${kpi.bestStreak}d`, delta: "", icon: Flame, c: "from-orange-400 to-pink-400" },
+            { label: "Total done", val: String(kpi.totalCompletions), delta: `${kpi.completionsDelta >= 0 ? "+" : ""}${kpi.completionsDelta}`, icon: Check, c: "from-emerald-400 to-teal-400" },
+            { label: "Perfect days", val: String(kpi.perfectDays), delta: `${kpi.perfectDelta >= 0 ? "+" : ""}${kpi.perfectDelta}`, icon: Star, c: "from-amber-400 to-yellow-300" },
           ].map((s, i) => (
             <div key={i} className="flex items-center gap-3 rounded-2xl border border-white/25 bg-white/15 p-3">
               <div className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-gradient-to-br ${s.c}`}><s.icon className="h-4.5 w-4.5 text-white" /></div>
@@ -1515,7 +1775,7 @@ function Stats_() {
                 <div className="font-display text-lg font-bold text-white">{s.val}</div>
                 <div className="text-[10px] text-white/80">{s.label}</div>
               </div>
-              <span className="rounded-full bg-mint/30 px-2 py-0.5 text-[10px] font-bold text-mint">{s.delta}</span>
+              {s.delta && <span className="rounded-full bg-mint/30 px-2 py-0.5 text-[10px] font-bold text-mint">{s.delta}</span>}
             </div>
           ))}
         </div>
@@ -1528,10 +1788,10 @@ function Stats_() {
           <span className="text-[10px] text-white/80">vs last {range === "W" ? "week" : range === "M" ? "month" : "year"}</span>
         </div>
         <div className="mt-4 space-y-3">
-          {_habits.slice(0, 5).map((h, i) => {
+          {topHabits.map((h, i) => {
             const HIcon = resolveIcon(h.icon);
-            const pct = 92 - i * 7;
-            const delta = [+12, +5, -3, +8, +2][i];
+            const pct = h.pct;
+            const delta = h.delta;
             const up = delta >= 0;
             return (
               <div key={i} className="flex items-center gap-3">
@@ -1553,6 +1813,9 @@ function Stats_() {
               </div>
             );
           })}
+          {topHabits.length === 0 && (
+            <div className="py-2 text-center text-xs text-white/60">No active habits found</div>
+          )}
         </div>
       </motion.div>
 
@@ -1568,9 +1831,8 @@ function Stats_() {
           </div>
           <div className="flex-1">
             <div className="grid grid-cols-12 gap-1">
-              {Array.from({ length: 12 * 7 }, (_, i) => {
-                const v = (Math.sin(i * 0.7) + 1) / 2;
-                const count = Math.round(v * 6);
+              {heatmapData.map((cell, i) => {
+                const v = cell.count / maxHeatmapCount;
                 return (
                   <motion.div
                     key={i}
@@ -1579,8 +1841,8 @@ function Stats_() {
                     whileHover={{ scale: 1.6, zIndex: 10 }}
                     transition={{ delay: i * 0.004 }}
                     className="aspect-square cursor-pointer rounded-[4px] border border-white/15"
-                    style={{ background: `oklch(0.78 0.22 ${170 + v * 160} / ${0.25 + v * 0.75})` }}
-                    title={`Week ${Math.floor(i / 7) + 1} · ${["Mon","Tue","Wed","Thu","Fri","Sat","Sun"][i % 7]} — ${count} habits done`}
+                    style={{ background: cell.count === 0 ? "rgba(255,255,255,0.05)" : `oklch(0.78 0.22 ${170 + v * 160} / ${0.25 + v * 0.75})` }}
+                    title={`${cell.dateStr} · ${cell.dayName} — ${cell.count} habits done`}
                   />
                 );
               })}
@@ -2146,11 +2408,11 @@ function Profile_({ go, user, onUserUpdate }: { go: (s: Screen) => void; user: U
 
       <motion.div variants={item} className="mt-5 space-y-2">
         {[
-          { icon: Settings, label: "Account settings", id: "account" as const },
+          { icon: Settings, label: "Account settings", onClick: () => fire("⚙️", "Account Settings", "This feature is currently in development. You'll be able to manage security and preferences here soon!") },
           { icon: Bell, label: "Notifications", onClick: () => go("notifications") },
           { icon: Palette, label: "Appearance", id: "appearance" as const, val: THEMES.find(t => t.id === theme)?.label },
-          { icon: Globe, label: "Language", id: "language" as const, val: lang },
-          { icon: Volume2, label: "Sounds & haptics", id: "sounds" as const, val: sound ? "On" : "Off" },
+          { icon: Globe, label: "Language", onClick: () => fire("🌐", "Language Settings", "Localization is in progress! Additional languages will be available in the next release.") },
+          { icon: Volume2, label: "Sounds & haptics", onClick: () => fire("🔊", "Sounds & Haptics", "Audio settings are being finalized. Custom completion sounds and haptics are coming soon!") },
           { icon: HelpCircle, label: "Help center", id: "help" as const },
         ].map((m, i) => (
           <button key={i} onClick={(m as any).onClick ?? (() => (m as any).id && setModal((m as any).id))} className="group flex w-full items-center justify-between rounded-2xl border border-white/25 bg-white/12 px-4 py-3.5 text-left transition hover:bg-white/18">
@@ -2178,7 +2440,7 @@ function Profile_({ go, user, onUserUpdate }: { go: (s: Screen) => void; user: U
               <Toggle on={s.v} set={s.set} />
             </div>
           ))}
-          <button onClick={() => fire("🔐", "Password reset sent", "Check your inbox for a magic reset link.")} className="w-full rounded-2xl bg-white/20 py-3 text-sm font-semibold text-white">Change password</button>
+          <button onClick={() => fire("🚧", "Change Password", "Change password functionality is currently in development. Secure password management is coming soon!")} className="w-full rounded-2xl bg-white/20 py-3 text-sm font-semibold text-white">Change password</button>
           <button onClick={() => fire("📦", "Export started", "We're packaging your data — you'll get a download link by email.")} className="w-full rounded-2xl bg-white/20 py-3 text-sm font-semibold text-white">Export my data</button>
           <button onClick={() => fire("⚠️", "Are you sure?", "Tap again within 5 seconds to confirm permanent deletion.")} className="w-full rounded-2xl border border-pink/40 bg-pink/15 py-3 text-sm font-semibold text-pink">Delete account</button>
 

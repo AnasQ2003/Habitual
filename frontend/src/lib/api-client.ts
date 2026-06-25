@@ -154,7 +154,7 @@ export const api = {
     delete: (id: string) => request<{ ok: boolean }>('DELETE', `/api/habits/${id}`),
     log: (id: string, value: number, date?: string) =>
       request<{ ok: boolean; streak: number; value: number }>('POST', `/api/habits/${id}/log`, { value, date }),
-    stats: () => request<{ log_date: string; goal: number; value: number; completed: number }[]>('GET', '/api/habits/stats'),
+    stats: () => request<{ log_id: string; habit_id: string; log_date: string; value: number; name: string; icon: string; color: string; goal: number; unit: string; completed: number }[]>('GET', '/api/habits/stats'),
   },
 
   // ─── Reminders ─────────────────────────────────────────────────────────────

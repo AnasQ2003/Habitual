@@ -285,7 +285,8 @@ app.get('/api/habits/stats', auth, async (req, res) => {
     const pool = await getPool();
     const result = await pool.request()
       .input('uid', sql.Int, req.user.id)
-      .query(`SELECT l.log_date, h.goal, l.value,
+      .query(`SELECT l.id AS log_id, l.habit_id, l.log_date, l.value,
+                     h.name, h.icon, h.color, h.goal, h.unit,
                      CASE WHEN l.value >= h.goal THEN 1 ELSE 0 END AS completed
               FROM dbo.HabitLogs l
               JOIN dbo.Habits h ON h.id = l.habit_id
