@@ -5,6 +5,7 @@
 # 🌟 Pulse — Habit Tracker
 
 **A premium, full-stack habit tracking web application built with React, TypeScript, Node.js & Microsoft SQL Server.**
+</div>
 
 <br/>
 
