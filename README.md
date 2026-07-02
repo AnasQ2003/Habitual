@@ -8,8 +8,6 @@
 
 <br/>
 
-<br/>
-
 > Build powerful daily routines. Visualise your progress. Celebrate every milestone.  
 > Pulse is not just a habit tracker — it is your personal wellness command centre.
 
