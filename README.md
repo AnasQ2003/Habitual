@@ -624,7 +624,7 @@ Pulse uses a bespoke design language built on top of Tailwind CSS v4:
 ```
 MIT License
 
-Copyright (c) 2024 AnasQ2003
+Copyright (c) Habitual---2026 AnasQ2003
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
