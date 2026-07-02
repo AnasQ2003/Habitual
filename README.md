@@ -143,41 +143,33 @@ Pulse gives users the ability to create, manage, and visualise habits across mul
 
 ---
 
-### Authentication
-
-| Login Screen | Register Screen |
+| Profile Screen | Stats Screen |
 |:---:|:---:|
 | ![Login](./screenshots/Screenshot%202026-06-25%20105948.png) | ![Register](./screenshots/Screenshot%202026-06-25%20110852.png) |
 
 ---
 
-### Home Dashboard
-
-| Home — Overview | Home — Progress Ring |
+| Splash Screen | Sign in Screen |
 |:---:|:---:|
 | ![Home 1](./screenshots/Screenshot%202026-06-25%20121319.png) | ![Home 2](./screenshots/Screenshot%202026-06-25%20121415.png) |
 
-| Home — Habit List | Home — Footer |
+| Account Creation Screen | Forgot-Password Screen |
 |:---:|:---:|
 | ![Home 3](./screenshots/Screenshot%202026-06-25%20121423.png) | ![Home 4](./screenshots/Screenshot%202026-06-25%20121431.png) |
 
 ---
 
-### Habits Screen
-
-| Habits List | Add Habit Modal |
+| Terms & Service Screen | Login Screen |
 |:---:|:---:|
 | ![Habits 1](./screenshots/Screenshot%202026-06-25%20121437.png) | ![Habits 2](./screenshots/Screenshot%202026-06-25%20121458.png) |
 
 ---
 
-### Statistics & Analytics
-
-| Stats Overview | Year Selector |
+| Home Screen | Home Screen |
 |:---:|:---:|
 | ![Stats 1](./screenshots/Screenshot%202026-06-25%20122508.png) | ![Stats 2](./screenshots/Screenshot%202026-06-25%20122514.png) |
 
-| Monthly Bar Chart | Category Breakdown |
+| Home Screen | Stat screen |
 |:---:|:---:|
 | ![Stats 3](./screenshots/Screenshot%202026-06-25%20122520.png) | ![Stats 4](./screenshots/Screenshot%202026-06-25%20122534.png) |
 
@@ -186,8 +178,6 @@ Pulse gives users the ability to create, manage, and visualise habits across mul
 | ![Stats 5](./screenshots/Screenshot%202026-06-25%20122539.png) | ![Stats 6](./screenshots/Screenshot%202026-06-25%20122545.png) |
 
 ---
-
-### Calendar
 
 | Calendar Month View | Day Detail Modal |
 |:---:|:---:|
@@ -198,8 +188,6 @@ Pulse gives users the ability to create, manage, and visualise habits across mul
 | ![Cal 3](./screenshots/Screenshot%202026-06-25%20122618.png) | ![Cal 4](./screenshots/Screenshot%202026-06-25%20122627.png) |
 
 ---
-
-### Achievements
 
 | Achievement Badges | Badge Progress |
 |:---:|:---:|
@@ -215,15 +203,11 @@ Pulse gives users the ability to create, manage, and visualise habits across mul
 
 ---
 
-### Community
-
 | Community Feed | Leaderboard |
 |:---:|:---:|
 | ![Com 1](./screenshots/Screenshot%202026-06-25%20122738.png) | ![Com 2](./screenshots/Screenshot%202026-06-25%20122744.png) |
 
 ---
-
-### Notifications
 
 | Notification Centre | Notification Types |
 |:---:|:---:|
@@ -235,9 +219,7 @@ Pulse gives users the ability to create, manage, and visualise habits across mul
 
 ---
 
-### Profile
-
-| Profile Overview | Edit Profile |
+| Profile Overview | Help & Center |
 |:---:|:---:|
 | ![Prof 1](./screenshots/Screenshot%202026-06-25%20122831.png) | ![Prof 2](./screenshots/Screenshot%202026-06-25%20122838.png) |
 
@@ -247,17 +229,13 @@ Pulse gives users the ability to create, manage, and visualise habits across mul
 
 ---
 
-### Navigation Drawer
-
 | Sidebar Drawer | Drawer Footer |
 |:---:|:---:|
 | ![Drawer 1](./screenshots/Screenshot%202026-06-25%20122901.png) | ![Drawer 2](./screenshots/Screenshot%202026-06-25%20122907.png) |
 
 ---
 
-### Additional Screens
-
-| Terms & Privacy | Toast Notification |
+| Achievements Screen | Comparision Socially |
 |:---:|:---:|
 | ![Terms](./screenshots/Screenshot%202026-06-25%20122912.png) | ![Toast](./screenshots/Screenshot%202026-06-25%20122941.png) |
 
@@ -273,15 +251,15 @@ Pulse gives users the ability to create, manage, and visualise habits across mul
 |:---:|:---:|
 | ![Edit 1](./screenshots/Screenshot%202026-06-25%20123018.png) | ![Edit 2](./screenshots/Screenshot%202026-06-25%20123022.png) |
 
-| Create Habit — Step 1 | Create Habit — Step 2 |
+| Setting Popup | Setting Popup--2 |
 |:---:|:---:|
 | ![Create 1](./screenshots/Screenshot%202026-06-25%20123057.png) | ![Create 2](./screenshots/Screenshot%202026-06-25%20123108.png) |
 
-| Create Habit — Icons | Create Habit — Colors |
+| Setting Popup--3 | Setting Popup--4 |
 |:---:|:---:|
 | ![Create 3](./screenshots/Screenshot%202026-06-25%20123113.png) | ![Create 4](./screenshots/Screenshot%202026-06-25%20123117.png) |
 
-| Create Habit — Frequency | Habit Completion |
+| Setting Popup--5 | Side Navigation |
 |:---:|:---:|
 | ![Create 5](./screenshots/Screenshot%202026-06-25%20123123.png) | ![Completion](./screenshots/Screenshot%202026-06-25%20123219.png) |
 
