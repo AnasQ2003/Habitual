@@ -139,7 +139,7 @@ Pulse gives users the ability to create, manage, and visualise habits across mul
 
 ## 📸 Screenshots
 
-> All 50 screenshots below are taken directly from the live Pulse application.
+> All the screenshots below are taken directly from the live Pulse application.
 
 ---
 
