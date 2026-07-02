@@ -19,7 +19,7 @@
 [![Node.js](https://img.shields.io/badge/Node.js-Express-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)](https://nodejs.org)
 [![SQL Server](https://img.shields.io/badge/SQL%20Server-MSSQL-CC2927?style=for-the-badge&logo=microsoftsqlserver&logoColor=white)](https://www.microsoft.com/sql-server)
 [![Framer Motion](https://img.shields.io/badge/Framer%20Motion-12-FF4D00?style=for-the-badge&logo=framer&logoColor=white)](https://www.framer.com/motion)
-</div>
+
 ---
 
 ## 📋 Table of Contents
