@@ -1,6 +1,11 @@
+<div align="center">
+
+<br/>
+   
 # 🌟 Pulse — Habit Tracker
 
 **A premium, full-stack habit tracking web application built with React, TypeScript, Node.js & Microsoft SQL Server.**
+
 
 <br/>
 
@@ -14,6 +19,8 @@
 [![Node.js](https://img.shields.io/badge/Node.js-Express-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)](https://nodejs.org)
 [![SQL Server](https://img.shields.io/badge/SQL%20Server-MSSQL-CC2927?style=for-the-badge&logo=microsoftsqlserver&logoColor=white)](https://www.microsoft.com/sql-server)
 [![Framer Motion](https://img.shields.io/badge/Framer%20Motion-12-FF4D00?style=for-the-badge&logo=framer&logoColor=white)](https://www.framer.com/motion)
+
+</div>
 
 ---
 
@@ -132,7 +139,7 @@ Pulse gives users the ability to create, manage, and visualise habits across mul
 
 ## 📸 Screenshots
 
-> All 50 screenshots below are taken directly from the live Pulse application.
+> All the screenshots below are taken directly from the live Pulse application.
 
 ---
 
