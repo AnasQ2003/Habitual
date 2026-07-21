@@ -1,6 +1,4 @@
 <div align="center">
-
-<br/>
    
 # 🌟 Pulse — Habit Tracker
 
@@ -8,11 +6,8 @@
 
 🎬 **Watch the Demo Video — Habitual:** [https://youtu.be/p8AVOnkzlZY](https://youtu.be/p8AVOnkzlZY)
 
-
-<br/>
-
-> Build powerful daily routines. Visualise your progress. Celebrate every milestone.  
-> Pulse is not just a habit tracker — it is your personal wellness command centre.
+ Build powerful daily routines. Visualise your progress. Celebrate every milestone.  
+ Pulse is not just a habit tracker — it is your personal wellness command centre.
 
 <br/>
 
@@ -626,7 +621,7 @@ Pulse uses a bespoke design language built on top of Tailwind CSS v4:
 ```
 MIT License
 
-Copyright (c) Habitual---2026 AnasQ2003
+Copyright (c) Habitual --- 2026 AnasQ2003
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
