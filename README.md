@@ -464,13 +464,7 @@ npm install
 npm run dev
 ```
 
-✅ The application will be available at:
 
-```
-http://localhost:8080
-```
-
-Open this URL in your browser and you will be greeted by the Pulse login screen.
 
 ---
 
@@ -492,7 +486,6 @@ Open this URL in your browser and you will be greeted by the Pulse login screen.
 
 ## 📡 API Reference
 
-All API endpoints are served from `http://localhost:5000/api`.  
 Protected routes require an `Authorization: Bearer <token>` header.
 
 ### Authentication
